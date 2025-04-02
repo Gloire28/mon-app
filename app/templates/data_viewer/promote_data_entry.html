@@ -1,0 +1,28 @@
+{% extends "shared/base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Promouvoir un Data Entry en Team Lead</h2>
+    <form method="POST">
+        <div class="mb-3">
+            <label for="region_id" class="form-label">Région</label>
+            <select name="region_id" id="region_id" class="form-select" onchange="this.form.submit()">
+                <option value="">Sélectionner une région</option>
+                {% for region in regions %}
+                <option value="{{ region.id }}">{{ region.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if request.args.get('region_id') %}
+        <div class="mb-3">
+            <label for="data_entry_id" class="form-label">Data Entry</label>
+            <select name="data_entry_id" id="data_entry_id" class="form-select">
+                {% for user in User.query.filter_by(role='data_entry', location_id=request.args.get('region_id')).all() %}
+                <option value="{{ user.id }}">{{ user.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Promouvoir</button>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

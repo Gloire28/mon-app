@@ -1,0 +1,174 @@
+<!-- app/templates/team_lead/performance_report.html -->
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="mt-4">
+    <h1 class="h3 text-dark mb-4">
+        <i class="fas fa-chart-line me-2" style="color: #38b2ac;"></i>Performance Régionale
+    </h1>
+
+    <!-- Score Global -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Score Global</h5>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-4 text-center">
+                    <h3 class="{{ performance.performance_class }}">{{ performance.performance_label }}</h3>
+                    <p class="h4">{{ performance.total_score }} / 100</p>
+                </div>
+                <div class="col-md-8">
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            TITE (40%)
+                            <span class="badge bg-primary rounded-pill">{{ (performance.details.tite * 100)|round(2) }}%</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Membres (30%)
+                            <span class="badge bg-primary rounded-pill">{{ (performance.details.members * 100)|round(2) }}%</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Soumissions (20%)
+                            <span class="badge bg-primary rounded-pill">{{ (performance.details.submission * 100)|round(2) }}%</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Commentaires (10%)
+                            <span class="badge bg-primary rounded-pill">{{ (performance.details.comments * 100)|round(2) }}%</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graphique -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="fas fa-chart-area me-2"></i>Tendances Mensuelles</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="regionalPerformanceChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Classement des Districts -->
+    <div class="row g-4">
+        <!-- Top 3 Membres -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Top 3 - Membres</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for district in top_members %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ district.name }}
+                                <span class="badge bg-success rounded-pill">{{ district.members }} membres</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom 3 Membres -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Bottom 3 - Membres</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for district in bottom_members %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ district.name }}
+                                <span class="badge bg-danger rounded-pill">{{ district.members }} membres</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top 3 TITE -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Top 3 - TITE</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for district in top_tite %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ district.name }}
+                                <span class="badge bg-success rounded-pill">{{ district.tite|round(2) }} FCFA</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom 3 TITE -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Bottom 3 - TITE</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for district in bottom_tite %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ district.name }}
+                                <span class="badge bg-danger rounded-pill">{{ district.tite|round(2) }} FCFA</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('regionalPerformanceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: {{ performance_data.labels|tojson }},
+                datasets: [
+                    {
+                        label: 'Membres',
+                        data: {{ performance_data.members|tojson }},
+                        borderColor: '#4299E1',
+                        backgroundColor: 'rgba(66, 153, 225, 0.2)',
+                        fill: true
+                    },
+                    {
+                        label: 'TITE (FCFA)',
+                        data: {{ performance_data.tite|tojson }},
+                        borderColor: '#48BB78',
+                        backgroundColor: 'rgba(72, 187, 120, 0.2)',
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

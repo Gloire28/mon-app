@@ -1,0 +1,118 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-lg">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-clipboard-list me-2"></i>
+                Saisie Hebdomadaire - {{ current_date.strftime('%d/%m/%Y') }}
+            </h4>
+        </div>
+        <div class="card-body">
+
+
+            <!-- Affichage des messages flash -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+
+            
+            <!-- Formulaire de saisie -->
+            <form id="data-entry-form" method="POST" novalidate action="{{ url_for('data.submit_data') }}">
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.members.label(class="form-label") }}
+                        {{ form.members(class="form-control" + (" is-invalid" if form.members.errors else "")) }}
+                        {% for error in form.members.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.children.label(class="form-label") }}
+                        {{ form.children(class="form-control" + (" is-invalid" if form.children.errors else "")) }}
+                        {% for error in form.children.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.men.label(class="form-label") }}
+                        {{ form.men(class="form-control" + (" is-invalid" if form.men.errors else "")) }}
+                        {% for error in form.men.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.women.label(class="form-label") }}
+                        {{ form.women(class="form-control" + (" is-invalid" if form.women.errors else "")) }}
+                        {% for error in form.women.errors %}
+                           <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                         {{ form.tite.label(class="form-label") }}
+                         {{ form.tite(class="form-control" + (" is-invalid" if form.tite.errors else "")) }}
+                         {% for error in form.tite.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                         {% endfor %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.location.label(class="form-label") }}
+                        {{ form.location(class="form-select" + (" is-invalid" if form.location.errors else "")) }}
+                        {% for error in form.location.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    {{ form.commentaire.label(class="form-label") }}
+                    {{ form.commentaire(class="form-control" + (" is-invalid" if form.commentaire.errors else ""), rows=4) }}
+                    {% for error in form.commentaire.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                    <small class="form-text text-muted">Maximum 500 caractères (optionnel)</small>
+                </div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-check-circle me-2"></i> Valider la Saisie
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('data-entry-form').addEventListener('submit', function (event) {
+        const members = parseInt(document.getElementById('members').value);
+        const children = parseInt(document.getElementById('children').value);
+        const men = parseInt(document.getElementById('men').value);
+        const women = parseInt(document.getElementById('women').value);
+
+        if (members !== (children + men + women)) {
+            event.preventDefault(); // Empêche la soumission du formulaire
+            // Afficher un message d'erreur en rouge
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'alert alert-danger';
+            errorMessage.innerHTML = 'Le nombre total de membres doit être égal à la somme du nombre d\'enfants, de femmes et d\'hommes.';
+            document.querySelector('.card-body').prepend(errorMessage);
+        }
+    });
+</script>
+{% endblock %}

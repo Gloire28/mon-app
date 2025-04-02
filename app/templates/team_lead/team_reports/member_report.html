@@ -1,0 +1,60 @@
+<!-- app/templates/team_lead/team_reports/member_report.html -->
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="mt-4">
+    <h1 class="h3 text-dark mb-4">
+        <i class="fas fa-user-edit me-2" style="color: #38b2ac;"></i>Rapport sur un Membre
+    </h1>
+    <div class="card shadow-lg">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-user-edit me-2"></i>Nouveau Rapport
+            </h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('team_lead.member_report') }}">
+                {{ form.hidden_tag() }}
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        {{ form.member.label(class="form-label") }}
+                        {{ form.member(class="form-select") }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.date.label(class="form-label") }}
+                        {{ form.date(class="form-control", type="date") }}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        {{ form.performance.label(class="form-label") }}
+                        {{ form.performance(class="form-select") }}
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            {{ form.critical_issue(class="form-check-input") }}
+                            {{ form.critical_issue.label(class="form-check-label") }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    {{ form.comments.label(class="form-label") }}
+                    {{ form.comments(class="form-control", rows=5, placeholder="Détails des performances...") }}
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Enregistrer
+                    </button>
+                    <a href="{{ url_for('team_lead.manage_members') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Retour
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

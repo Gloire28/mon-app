@@ -1,0 +1,59 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-sign-in-alt me-2"></i>Connexion</h4>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Messages Flash -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <!-- Matricule -->
+                        <div class="mb-3">
+                            <label class="form-label">Matricule</label>
+                            {{ form.matriculate(class="form-control") }}
+                        </div>
+
+                        <!-- Mot de passe -->
+                        <div class="mb-4">
+                            <label class="form-label">Mot de passe</label>
+                            {{ form.password(class="form-control") }}
+                        </div>
+
+                        <!-- Bouton -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-sign-in-alt me-2"></i>Se connecter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Lien vers inscription -->
+                <div class="card-footer text-center">
+                    <small>Pas de compte ? 
+                        <a href="{{ url_for('auth.register') }}" class="text-primary">Inscrivez-vous ici</a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

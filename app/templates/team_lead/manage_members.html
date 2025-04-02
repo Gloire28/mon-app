@@ -1,0 +1,185 @@
+{% extends "shared/base.html" %}
+
+{% block dashboard_title %}
+Gestion des Membres
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Messages Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Somme totale des TITE -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>TITE Total des Districts</h5>
+        </div>
+        <div class="card-body">
+            <p class="h4">{{ total_tite|round(2)|format_number }} FCFA</p>
+            <small class="text-muted">Somme des TITE des 30 derniers jours pour tous les districts de votre région.</small>
+        </div>
+    </div>
+
+    <!-- Formulaire de gestion des membres -->
+    <div class="card shadow-lg mb-4">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="bi bi-people-fill me-2"></i>Ajouter ou Retirer un Membre
+            </h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" class="row g-3" action="{{ url_for('team_lead.manage_members') }}">
+                {{ form.hidden_tag() }}
+                <div class="col-md-5">
+                    <label for="{{ form.member.id }}" class="form-label">{{ form.member.label }}</label>
+                    {{ form.member(class="form-select" + (" is-invalid" if form.member.errors else ""), **{"aria-describedby": "memberHelp"}) }}
+                    <div id="memberHelp" class="form-text">Sélectionnez un membre à ajouter ou retirer.</div>
+                    {% for error in form.member.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="col-md-5">
+                    <label for="{{ form.location.id }}" class="form-label">{{ form.location.label }}</label>
+                    {{ form.location(class="form-select" + (" is-invalid" if form.location.errors else ""), **{"aria-describedby": "locationHelp"}) }}
+                    <div id="locationHelp" class="form-text">Sélectionnez une localisation pour le membre.</div>
+                    {% for error in form.location.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="col-md-2 d-flex align-items-end">
+                    <div class="d-grid gap-2 w-100">
+                        <button type="submit" name="submit_add" class="btn btn-success" data-bs-toggle="tooltip" title="Ajouter le membre à la localisation sélectionnée">
+                            <i class="bi bi-person-plus-fill me-2"></i>Ajouter
+                        </button>
+                        <button type="submit" name="submit_remove" class="btn btn-danger" data-bs-toggle="tooltip" title="Retirer le membre de votre région">
+                            <i class="bi bi-person-x-fill me-2"></i>Retirer
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Liste des membres -->
+    <div class="card shadow-lg">
+        <div class="card-header bg-secondary text-white">
+            <h4 class="mb-0">
+                <i class="bi bi-people me-2"></i>Membres de l'Équipe
+            </h4>
+        </div>
+        <div class="card-body">
+            {% if team_members %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="membersTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Matricule</th>
+                                <th scope="col">Nom</th>
+                                <th scope="col">Téléphone</th>
+                                <th scope="col">Localisation</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for member in team_members %}
+                                <tr>
+                                    <td class="text-muted">{{ member.matriculate or 'N/A' }}</td>
+                                    <td>{{ member.name }}</td>
+                                    <td>{{ member.phone or 'N/A' }}</td>
+                                    <td>
+                                        {% if member.location %}
+                                            <span class="badge bg-info">{{ member.location.name }}</span>
+                                        {% else %}
+                                            <span class="text-muted">Non assigné</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ member.id }}" aria-label="Retirer {{ member.name }}">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+
+                                        <!-- Modal de confirmation -->
+                                        <div class="modal fade" id="deleteModal{{ member.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ member.id }}" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="deleteModalLabel{{ member.id }}">Confirmation de suppression</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        Êtes-vous sûr de vouloir retirer {{ member.name }} de votre région ?
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                                        <form method="POST" action="{{ url_for('team_lead.manage_members') }}" class="d-inline">
+                                                            {{ form.hidden_tag() }}
+                                                            <input type="hidden" name="member" value="{{ member.id }}">
+                                                            <button type="submit" name="submit_remove" class="btn btn-danger">Confirmer</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-center text-muted py-4">Aucun membre dans l'équipe.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- Inclure DataTables pour le tri et la pagination -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script>
+    // Initialiser DataTables pour le tableau des membres
+    $(document).ready(function() {
+        $('#membersTable').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json"
+            },
+            "pageLength": 10,
+            "order": [[1, "asc"]], // Trier par nom par défaut
+            "columnDefs": [
+                { "orderable": false, "targets": 4 } // Désactiver le tri sur la colonne Actions
+            ]
+        });
+    });
+
+    // Filtre pour formater les nombres avec des séparateurs de milliers
+    const formatNumber = (num) => {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    };
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.format-number').forEach(el => {
+            el.textContent = formatNumber(el.textContent);
+        });
+    });
+
+    // Activer les tooltips Bootstrap
+    document.addEventListener('DOMContentLoaded', () => {
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    });
+</script>
+{% endblock %}

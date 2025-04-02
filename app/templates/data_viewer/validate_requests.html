@@ -1,0 +1,18 @@
+{% extends "shared/base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Valider les Demandes</h2>
+    {% for request in pending_requests %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <p>{{ request.description }} ({{ request.user.name }})</p>
+            <form method="POST" class="d-inline">
+                <input type="hidden" name="request_id" value="{{ request.id }}">
+                <button type="submit" name="action" value="validate" class="btn btn-success btn-sm">Valider</button>
+                <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">Refuser</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

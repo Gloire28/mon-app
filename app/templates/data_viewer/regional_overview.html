@@ -1,0 +1,64 @@
+{% extends "shared/dashboard_base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-chart-bar me-2"></i>Tableau de Performance Régionale
+        </h1>
+    </div>
+
+    <!-- Tableau principal -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="regionalTable" width="100%" cellspacing="0">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Région 🏢</th>
+                            <th>Team Lead 👨‍💼</th>
+                            <th>Voir Membres 🔍</th>
+                            <th>Performance 📊</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for region in regions_data %}
+                        <tr class="hover-highlight">
+                            <td>{{ region.name }}</td>
+                            <td>{{ region.team_lead.name if region.team_lead else 'Non assigné' }}</td>
+                            <td>
+                                <a href="{{ url_for('data_viewer.view_team', region_id=region.id) }}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-users me-1"></i>Consulter
+                                </a>
+                            </td>
+                            <td>
+                                <div class="performance-badge {{ region.performance_class }}">
+                                    {{ region.performance_label }}
+                                    <small class="text-muted">({{ region.performance_score }}%)</small>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+.performance-badge {
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-weight: 500;
+}
+
+.performance-badge.excellent { background-color: #2ecc71; color: white; }
+.performance-badge.average { background-color: #f1c40f; color: white; }
+</style>
+{% endblock %}

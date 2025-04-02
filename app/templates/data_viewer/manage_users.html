@@ -1,0 +1,24 @@
+{% extends "shared/base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Gestion des Utilisateurs</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Rôle</th>
+                <th>Localisation</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.name }}</td>
+                <td>{{ user.role }}</td>
+                <td>{{ user.location.name if user.location else 'N/A' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

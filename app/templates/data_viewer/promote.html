@@ -1,0 +1,12 @@
+{% extends "shared/base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Gérer les Promotions</h2>
+    <form method="POST">
+        <div class="mb-3">
+            <button type="submit" name="action" value="data_entry" class="btn btn-primary">Promouvoir un Data Entry</button>
+            <button type="submit" name="action" value="district" class="btn btn-primary">Promouvoir un District</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

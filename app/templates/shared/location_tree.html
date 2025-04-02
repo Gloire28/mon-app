@@ -1,0 +1,48 @@
+{# templates/shared/location_tree.html #}
+
+<div class="location-tree">
+    <ul class="list-unstyled ps-0">
+        {% for location in locations %}
+        <li class="location-node mb-2">
+            <div class="d-flex align-items-center">
+                <!-- Toggle pour les enfants -->
+                {% if location.children.count() %}
+                    <span class="toggle-children me-2 text-muted" style="cursor: pointer;">[+]</span>
+                {% else %}
+                    <span class="me-2" style="width: 20px;"></span> {# Placeholder pour alignement #}
+                {% endif %}
+
+                <!-- Badge pour le type de localisation -->
+                <span class="badge me-2 {{ 'badge-type-reg' if location.type == 'REG' else 'badge-type-other' }}">
+                    {{ location.type }}
+                </span>
+
+                <!-- Détails de la localisation -->
+                <div class="flex-grow-1">
+                    <strong>{{ location.code }}</strong> - {{ location.name }}
+                    {% if location.team_lead %}
+                        <span class="text-muted ms-2 small">
+                            (Responsable: {{ location.team_lead.name }})
+                        </span>
+                    {% endif %}
+                </div>
+
+                <!-- Actions (éditer/supprimer) -->
+                <div class="ms-2">
+                    <i class="fas fa-edit edit-location text-primary" data-location-id="{{ location.id }}" style="cursor: pointer;" title="Éditer"></i>
+                    <i class="fas fa-trash delete-location text-danger ms-2" data-location-id="{{ location.id }}" style="cursor: pointer;" title="Supprimer"></i>
+                </div>
+            </div>
+
+            <!-- Liste des enfants (récursion) -->
+            {% if location.children.count() %}
+                <ul class="list-unstyled ps-4 mt-1" hidden>
+                    {% with locations=location.children %}
+                        {% include 'shared/location_tree.html' %}
+                    {% endwith %}
+                </ul>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>

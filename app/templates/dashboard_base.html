@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Tableau de bord - {{ current_user.role|replace('_', ' ')|title }}</h2>
+    
+    <!-- Section commune à tous -->
+    <div class="alert alert-info">
+        Bienvenue, {{ current_user.name }} ({{ current_user.matriculate }})
+    </div>
+
+    <!-- Contenu spécifique au rôle -->
+    {% block role_content %}{% endblock %}
+</div>
+{% endblock %}
+
+{# Dans templates/shared/dashboard_base.html #}
+<style>
+.performance-badge {
+    padding: 0.5em 1em;
+    border-radius: 20px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.performance-badge.very-good { background-color: #28a745; color: white; }
+.performance-badge.good { background-color: #17a2b8; color: white; }
+.performance-badge.average { background-color: #ffc107; color: black; }
+.performance-badge.poor { background-color: #dc3545; color: white; }
+</style>

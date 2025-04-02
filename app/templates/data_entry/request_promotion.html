@@ -1,0 +1,34 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-lg">
+        <div class="card-header bg-success text-white">
+            <h4><i class="fas fa-arrow-up me-2"></i>Demander une Promotion</h4>
+        </div>
+        <div class="card-body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    {{ form.region.label(class="form-label") }}
+                    {{ form.region(class="form-select") }}
+                </div>
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-check-circle me-2"></i>Soumettre
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

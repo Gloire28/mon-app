@@ -1,0 +1,60 @@
+{% extends "shared/dashboard_base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="mb-4">
+        <input type="text" id="location-search" class="form-control rounded" placeholder="Rechercher une localisation...">
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-map-marker-alt me-2"></i>Nouvelle Localisation
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">
+                            {{ form.code.label(class="form-label") }}
+                            {{ form.code(class="form-control rounded") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.name.label(class="form-label") }}
+                            {{ form.name(class="form-control rounded") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.type.label(class="form-label") }}
+                            {{ form.type(class="form-select rounded") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.parent.label(class="form-label") }}
+                            {{ form.parent(class="form-select rounded") }}
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fas fa-save me-2"></i>Enregistrer
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-sitemap me-2"></i>Arborescence des Localisations
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div id="location-tree" class="location-tree">
+                        {% include 'shared/location_tree.html' %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

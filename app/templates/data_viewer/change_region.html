@@ -1,0 +1,28 @@
+{% extends "shared/base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-lg">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0">
+                <i class="fas fa-exchange-alt me-2"></i>Changer de région
+            </h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('data_viewer_bp.change_region') }}">
+                <div class="mb-3">
+                    <label for="region_id" class="form-label">Sélectionnez une région :</label>
+                    <select class="form-select rounded" id="region_id" name="region_id" required>
+                        <option value="" disabled selected>Choisir une région</option>
+                        {% for region in regions %}
+                        <option value="{{ region.id }}">{{ region.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-check me-2"></i>Changer
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

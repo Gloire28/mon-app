@@ -1,0 +1,26 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="container d-flex flex-column justify-content-center align-items-center" style="min-height: 100vh;">
+    <div class="text-center p-5 rounded shadow-sm" style="background-color: white; max-width: 600px;">
+        <h1 class="display-4 text-dark mb-3">Bienvenue sur OPTIMIZER</h1>
+        <p class="lead text-muted mb-4">Plateforme de collecte et de gestion de données pour une optimisation</p>
+        <hr class="my-4" style="border-color: #e2e8f0;">
+
+        {% if not current_user.is_authenticated %}
+        <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
+            <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-sign-in-alt me-2"></i>Connexion
+            </a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-success btn-lg">
+                <i class="fas fa-user-plus me-2"></i>Créer un compte
+            </a>
+        </div>
+        {% else %}
+        <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary btn-lg">
+            <i class="fas fa-tachometer-alt me-2"></i>Accéder au tableau de bord
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

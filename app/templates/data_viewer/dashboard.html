@@ -1,0 +1,359 @@
+<!-- app/templates/data_viewer/dashboard.html -->
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="mt-4">
+    <h1 class="h3 text-dark mb-4">
+        <i class="fas fa-tachometer-alt me-2" style="color: #38b2ac;"></i>Tableau de Bord - Data Viewer
+    </h1>
+
+    <!-- Section 1 : Demandes en Attente -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-warning text-white">
+            <h5 class="mb-0"><i class="fas fa-bell me-2"></i>Demandes en Attente</h5>
+        </div>
+        <div class="card-body">
+            {% if pending_change_requests|length > 0 or pending_promotion_requests|length > 0 %}
+                <ul class="list-group">
+                    {% for request in pending_change_requests %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Demande de changement de localisation par {{ request.user.name }} ({{ request.new_region.name }})
+                            <form method="POST" action="{{ url_for('main.validate_requests') }}" class="d-inline">
+                                <input type="hidden" name="request_type" value="change">
+                                <input type="hidden" name="request_id" value="{{ request.id }}">
+                                <button type="submit" name="action" value="validate" class="btn btn-sm btn-success me-2" data-bs-toggle="tooltip" title="Valider la demande">
+                                    <i class="fas fa-check"></i> Valider
+                                </button>
+                                <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Refuser la demande">
+                                    <i class="fas fa-times"></i> Refuser
+                                </button>
+                            </form>
+                        </li>
+                    {% endfor %}
+                    {% for request in pending_promotion_requests %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Demande de promotion par {{ request.user.name }} ({{ request.requested_region.name }})
+                            <form method="POST" action="{{ url_for('main.validate_requests') }}" class="d-inline">
+                                <input type="hidden" name="request_type" value="promotion">
+                                <input type="hidden" name="request_id" value="{{ request.id }}">
+                                <button type="submit" name="action" value="validate" class="btn btn-sm btn-success me-2" data-bs-toggle="tooltip" title="Valider la demande">
+                                    <i class="fas fa-check"></i> Valider
+                                </button>
+                                <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Refuser la demande">
+                                    <i class="fas fa-times"></i> Refuser
+                                </button>
+                            </form>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-center text-muted py-4">Aucune demande en attente.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Section 2 : Régions -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="fas fa-map-marked me-2"></i>Régions</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                {% for data in regions_data %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ data.region.name }} {% if data.performance.has_report %}<i class="fas fa-file-alt text-info" data-bs-toggle="tooltip" title="Rapport disponible"></i>{% endif %}</h5>
+                                <p class="card-text">
+                                    <strong>Team Lead:</strong> 
+                                    {% if data.team_lead %}
+                                        {{ data.team_lead.name }}
+                                    {% else %}
+                                        Non assigné
+                                    {% endif %}
+                                </p>
+                                <p class="card-text">
+                                    <strong>Performance:</strong> 
+                                    <span class="badge bg-{{ data.performance.performance_class }}">{{ data.performance.performance_label }}</span>
+                                    <small>({{ data.performance.total_score }}%)</small>
+                                    <div class="progress mt-2">
+                                        <div class="progress-bar bg-{{ data.performance.performance_class }}" style="width: {{ data.performance.total_score }}%"></div>
+                                    </div>
+                                </p>
+                                <a href="{{ url_for('data_viewer_bp.team_details', region_id=data.region.id) }}" class="btn btn-outline-primary w-100" data-bs-toggle="tooltip" title="Voir les rapports de cette région">
+                                    <i class="fas fa-users me-2"></i>Voir les rapports
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-center text-muted py-4">Aucune région enregistrée.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3 : Rapports Récents des Team Leads -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Rapports Récents des Team Leads</h5>
+        </div>
+        <div class="card-body">
+            {% if team_lead_reports %}
+                <div class="table-responsive-mobile">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Team Lead</th>
+                                <th>Région</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                                <th>Commentaires</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for report in team_lead_reports %}
+                                <tr>
+                                    <td>{{ report.team_lead.name }}</td>
+                                    <td>{{ report.team_lead.location.name if report.team_lead.location else 'N/A' }}</td>
+                                    <td>{{ 'Mensuel' if report.month else 'Membre' }}</td>
+                                    <td>{{ report.created_at.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ report.comments|truncate(50) }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-center text-muted py-4">Aucun rapport récent des Team Leads.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Section 4 : Entrées Récentes des Data Entries -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Entrées Récentes des Data Entries</h5>
+        </div>
+        <div class="card-body">
+            {% if data_entry_entries %}
+                <div class="table-responsive-mobile">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Utilisateur</th>
+                                <th>District</th>
+                                <th>Région</th>
+                                <th>Membres</th>
+                                <th>TITE</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in data_entry_entries %}
+                                <tr>
+                                    <td>{{ entry.user.name }}</td>
+                                    <td>{{ entry.location.name if entry.location and entry.location.type == 'DIS' else 'N/A' }}</td>
+                                    <td>{{ entry.location.parent.name if entry.location and entry.location.parent else entry.location.name if entry.location else 'N/A' }}</td>
+                                    <td>{{ entry.members }}</td>
+                                    <td>{{ entry.tite|round(2) }} FCFA</td>
+                                    <td>{{ entry.date.strftime('%d/%m/%Y') }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-center text-muted py-4">Aucune entrée récente des Data Entries.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Section 5 : Utilisateurs -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-users me-2"></i>Utilisateurs</h5>
+            <a href="{{ url_for('data_viewer_bp.export_user_data') }}" class="btn btn-sm btn-light" data-bs-toggle="tooltip" title="Exporter les données des utilisateurs en CSV">
+                <i class="fas fa-file-excel me-2"></i>Exporter
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive-mobile">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Rôle</th>
+                            <th>District</th>
+                            <th>Région</th>
+                            <th>Entrées</th>
+                            <th>Dernier Rapport</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users_data %}
+                            <tr>
+                                <td>{{ user.name }}</td>
+                                <td>{{ user.role|title }}</td>
+                                <td>{{ user.district.name if user.district else 'N/A' }}</td>
+                                <td>{{ user.region.name if user.region else 'N/A' }}</td>
+                                <td>{{ user.total_entries }}</td>
+                                <td>{{ user.report|truncate(20) if user.report else 'Aucun' }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="6" class="text-center text-muted">Aucune donnée.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 6 : Analyse Mensuelle -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Analyse Mensuelle</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="regionSelect" class="form-label">Région:</label>
+                <select id="regionSelect" class="form-select w-25 d-inline-block">
+                    <option value="all">Toutes les régions</option>
+                    {% for data in regions_data %}
+                        <option value="{{ data.region.id }}">{{ data.region.name }}</option>
+                    {% endfor %}
+                </select>
+                <label for="roleFilter" class="form-label ms-3">Rôle:</label>
+                <select id="roleFilter" class="form-select w-25 d-inline-block">
+                    <option value="all">Tous les rôles</option>
+                    <option value="team_lead">Team Lead</option>
+                    <option value="data_entry">Data Entry</option>
+                </select>
+                <a href="#" id="exportMonthlyData" class="btn btn-sm btn-outline-success ms-2" data-bs-toggle="tooltip" title="Exporter les données mensuelles en CSV">
+                    <i class="fas fa-file-excel me-2"></i>Exporter Mensuel
+                </a>
+            </div>
+            <canvas id="monthlyPerformanceChart"></canvas>
+            <div id="weeklyDataTable" class="mt-3" style="display: none;">
+                <h6>Données Hebdomadaires</h6>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Semaine</th>
+                            <th>Entrées</th>
+                            <th>Utilisateur</th>
+                        </tr>
+                    </thead>
+                    <tbody id="weeklyDataBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Activer les tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Données initiales
+    const regionsData = {{ regions_data | tojson }};
+    const monthlyData = {{ monthly_data | tojson }};
+    let chart;
+
+    // Fonction pour mettre à jour le graphique
+    function updateChart(regionId, role) {
+        let datasets = [];
+        if (regionId === 'all') {
+            datasets = regionsData.map(region => ({
+                label: region.region.name,
+                data: monthlyData[region.region.id] || Array(12).fill(0),
+                borderColor: `#${Math.floor(Math.random()*16777215).toString(16)}`,
+                fill: false
+            }));
+        } else {
+            const region = regionsData.find(r => r.region.id == regionId);
+            if (region) {
+                datasets.push({
+                    label: region.region.name,
+                    data: monthlyData[region.region.id] || Array(12).fill(0),
+                    borderColor: '#4299E1',
+                    fill: false
+                });
+            }
+        }
+
+        // Filtrer par rôle si nécessaire (côté client pour simplifier)
+        if (role !== 'all') {
+            // Note : Cela nécessiterait des données supplémentaires par rôle, à implémenter côté serveur
+            console.log(`Filtrage par rôle ${role} - À implémenter côté serveur`);
+        }
+
+        if (chart) {
+            chart.destroy();
+        }
+
+        const ctx = document.getElementById('monthlyPerformanceChart').getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'],
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Entrées' } },
+                    x: { title: { display: true, text: 'Mois' } }
+                },
+                plugins: {
+                    legend: { display: true },
+                    tooltip: { mode: 'index', intersect: false }
+                }
+            }
+        });
+    }
+
+    // Gestion des filtres
+    const regionSelect = document.getElementById('regionSelect');
+    const roleFilter = document.getElementById('roleFilter');
+    const exportMonthlyData = document.getElementById('exportMonthlyData');
+    const weeklyDataTable = document.getElementById('weeklyDataTable');
+    const weeklyDataBody = document.getElementById('weeklyDataBody');
+
+    function updateFilters() {
+        const regionId = regionSelect.value;
+        const role = roleFilter.value;
+        updateChart(regionId, role);
+        exportMonthlyData.href = `/data_viewer/export-monthly-data?region_id=${regionId}&role=${role}`;
+
+        // Mettre à jour les données hebdomadaires si une région spécifique est sélectionnée
+        if (regionId !== 'all') {
+            fetch(`/data_viewer/weekly-data/${regionId}`)
+                .then(response => response.json())
+                .then(data => {
+                    weeklyDataBody.innerHTML = data.map(entry => 
+                        `<tr><td>${entry.week}</td><td>${entry.entries}</td><td>${entry.user}</td></tr>`).join('');
+                    weeklyDataTable.style.display = 'block';
+                })
+                .catch(error => console.error('Error:', error));
+        } else {
+            weeklyDataTable.style.display = 'none';
+        }
+    }
+
+    regionSelect.addEventListener('change', updateFilters);
+    roleFilter.addEventListener('change', updateFilters);
+
+    // Initialisation
+    updateChart('all', 'all');
+});
+</script>
+{% endblock %}

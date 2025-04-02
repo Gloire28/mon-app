@@ -1,0 +1,70 @@
+<!-- app/templates/team_lead/view_team_members.html -->
+{% extends "shared/base.html" %}
+
+{% block dashboard_title %}
+Voir les Membres
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-lg">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">
+            <i class="bi bi-eye me-2"></i>
+            Voir les Membres de l'Équipe
+        </h4>
+    </div>
+
+    <div class="card-body">
+        {% if member_data %}
+            {% for data in member_data %}
+                <div class="mb-4">
+                    <h5>{{ data.member.name }} ({{ data.member.matriculate }})</h5>
+                    <p><strong>Téléphone :</strong> {{ data.member.phone }}</p>
+                    <p><strong>Localisation :</strong> 
+                        {% if data.member.location %}
+                            <span class="badge bg-info">{{ data.member.location.name }}</span>
+                        {% else %}
+                            <span class="text-muted">Non assigné</span>
+                        {% endif %}
+                    </p>
+                    <h6>Dernières entrées :</h6>
+                    {% if data.entries %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Membres</th>
+                                        <th>TITE</th>
+                                        <th>Localisation</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for entry in data.entries %}
+                                        <tr>
+                                            <td>{{ entry.date.strftime('%d/%m/%Y') }}</td>
+                                            <td>{{ entry.members }}</td>
+                                            <td>{{ entry.tite|round(2) }} FCFA</td>
+                                            <td>
+                                                {% if entry.location %}
+                                                    <span class="badge bg-info">{{ entry.location.name }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">Non assigné</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Aucune entrée pour ce membre.</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted text-center py-4">Aucun membre dans l'équipe.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+<!-- app/templates/team_lead/manage_districts.html -->
+{% extends "shared/base.html" %}
+
+{% block dashboard_title %}
+Gestion des Districts
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-lg">
+    <div class="card-header bg-success text-white">
+        <h4 class="mb-0">
+            <i class="bi bi-map-fill me-2"></i>
+            Gestion des Districts
+        </h4>
+    </div>
+
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                    <th>Code</th>
+                    <th>Nom</th>
+                    <th>Région Parente</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for district in districts %}
+                    <tr>
+                        <td class="text-muted">{{ district.code }}</td>
+                        <td>{{ district.name }}</td>
+                        <td>
+                            {% if district.parent %}
+                                <span class="badge bg-info">{{ district.parent.name }}</span>
+                            {% else %}
+                                <span class="text-muted">Non assigné</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center text-muted py-4">
+                            Aucun district trouvé.
+                        </td>
+                    </tr>
+                    {% endfor %}
+              </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="card shadow-lg">
+    <div class="card-header bg-warning text-white">
+        <h4 class="mb-0">
+            <i class="fas fa-exchange-alt me-2"></i> Transfert de District
+        </h4>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('team_lead.transfer_district') }}">
+            {{ form.hidden_tag() }}
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    {{ form.current_region.label(class="form-label") }}
+                    {{ form.current_region(class="form-control", readonly=True) }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.district.label(class="form-label") }}
+                    {{ form.district(class="form-select") }}
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    {{ form.new_region.label(class="form-label") }}
+                    {{ form.new_region(class="form-select") }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.reason.label(class="form-label") }}
+                    {{ form.reason(class="form-select") }}
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane me-2"></i> Soumettre la demande
+                </button>
+                <a href="{{ url_for('team_lead.dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times me-2"></i> Annuler
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,286 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Historique Fixe à Côté de la Sidebar -->
+        <aside class="col-md-3 col-lg-2 bg-white shadow-sm" style="position: fixed; top: 60px; bottom: 0; left: 240px; z-index: 99; overflow-y: auto; border-right: 1px solid #e2e8f0;">
+            <div class="p-3">
+                <h5 class="text-dark mb-3">
+                    <i class="fas fa-history me-2" style="color: #38b2ac;"></i>Historique Récent
+                </h5>
+                {% if entries %}
+                    <ul class="list-group list-group-flush">
+                        {% for entry in entries %}
+                            <li class="list-group-item py-2 px-0 border-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <small class="text-muted d-block">{{ entry.date.strftime('%d/%m/%Y') }}</small>
+                                        <strong>{{ entry.members }}</strong> membres, TITE: {{ entry.tite|default('N/A') }}<br>
+                                        <span class="text-muted small text-truncate d-block" style="max-width: 100%;">{{ entry.commentaire|truncate(30, true, '...') or 'Aucun commentaire' }}</span>
+                                    </div>
+                                    <a href="{{ url_for('data.edit_entry', entry_id=entry.id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted text-center mt-3">Aucune donnée saisie pour le moment.</p>
+                {% endif %}
+            </div>
+        </aside>
+
+        <!-- Contenu Principal -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 mt-4" style="margin-left: 480px;">
+            <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom">
+                <h1 class="h3 text-dark">
+                    <i class="fas fa-tachometer-alt me-2" style="color: #38b2ac;"></i>Tableau de Bord
+                </h1>
+                <a href="{{ url_for('data.new_entry') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus me-2"></i>Nouvelle Saisie
+                </a>
+            </div>
+
+            <!-- Messages Flash -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show mb-4">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Graphique -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #4a5568, #718096);">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Évolution des Membres et TITE</h5>
+                </div>
+                <div class="card-body">
+                    {% if entries %}
+                        <canvas id="membersChart" height="100"></canvas>
+                    {% else %}
+                        <p class="text-muted text-center">Aucune donnée disponible pour le graphique.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Statut des Demandes -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header text-dark" style="background-color: #fbd38d;">
+                            <h5 class="mb-0"><i class="fas fa-hourglass-half me-2"></i>Statut de la Demande de Changement</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if pending_change %}
+                                <p class="mb-2">Demande pour : 
+                                    <strong>
+                                        {% if pending_change.new_district %}
+                                            {{ pending_change.new_district.name }}
+                                        {% else %}
+                                            District inconnu
+                                        {% endif %}
+                                    </strong> 
+                                    (Région : 
+                                    {% if pending_change.new_region %}
+                                        {{ pending_change.new_region.name }}
+                                    {% else %}
+                                        Région inconnue
+                                    {% endif %})
+                                </p>
+                                <div class="d-flex justify-content-around align-items-center">
+                                    <!-- Étape 1 : Validation par le Data Entry -->
+                                    <div class="text-center">
+                                        <div class="p-3 border rounded" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; background-color: {% if change_request_status.rejected and change_request_status.rejected_by == 'Data Entry' %}#f8d7da{% elif change_request_status.data_entry_validated %}#d4edda{% else %}#e2e3e5{% endif %};">
+                                            {% if change_request_status.rejected and change_request_status.rejected_by == 'Data Entry' %}
+                                                <i class="fas fa-times fa-2x" style="color: #dc3545;"></i>
+                                            {% elif change_request_status.data_entry_validated %}
+                                                <i class="fas fa-check fa-2x" style="color: #28a745;"></i>
+                                            {% else %}
+                                                <i class="fas fa-hourglass-half fa-2x" style="color: #6c757d;"></i>
+                                            {% endif %}
+                                        </div>
+                                        <p class="mt-2 mb-0">Validation Data Entry</p>
+                                    </div>
+                                    <!-- Étape 2 : Validation par le Team Lead -->
+                                    <div class="text-center">
+                                        <div class="p-3 border rounded" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; background-color: {% if change_request_status.rejected and change_request_status.rejected_by == 'Team Lead' %}#f8d7da{% elif change_request_status.team_lead_validated %}#d4edda{% else %}#e2e3e5{% endif %};">
+                                            {% if change_request_status.rejected and change_request_status.rejected_by == 'Team Lead' %}
+                                                <i class="fas fa-times fa-2x" style="color: #dc3545;"></i>
+                                            {% elif change_request_status.team_lead_validated %}
+                                                <i class="fas fa-check fa-2x" style="color: #28a745;"></i>
+                                            {% else %}
+                                                <i class="fas fa-hourglass-half fa-2x" style="color: #6c757d;"></i>
+                                            {% endif %}
+                                        </div>
+                                        <p class="mt-2 mb-0">Validation Team Lead</p>
+                                    </div>
+                                </div>
+                                {% if pending_change.status == 'rejected' %}
+                                    <p class="mt-3 text-danger">Raison du refus : {{ pending_change.reason or 'Non spécifiée' }}</p>
+                                {% endif %}
+                            {% else %}
+                                <p class="text-muted text-center">Aucune demande de changement de localisation en cours.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {% if pending_promotion %}
+                <div class="col-md-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header text-dark" style="background-color: #b2f5ea;">
+                            <h5 class="mb-0"><i class="fas fa-arrow-up me-2"></i>Demande de Promotion</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0">Région : <strong>{{ pending_promotion.requested_region.name }}</strong></p>
+                            <span class="badge bg-success mt-2">En attente</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Affiliation -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header text-dark" style="background-color: #e6fffa;">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2" style="color: #2c7a7b;"></i>Affiliation</h5>
+                </div>
+                <div class="card-body">
+                    {% if user_location %}
+                        <p class="mb-1">
+                            <strong>District :</strong> {{ user_location.name }}
+                            <span class="badge ms-2" style="background-color: #38b2ac; color: white;">{{ user_location.type }}</span>
+                        </p>
+                        {% if parent_region %}
+                            <p class="mb-0"><strong>Région :</strong> {{ parent_region.name }}</p>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted mb-0">Aucune localisation attribuée.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if entries %}
+            const ctx = document.getElementById('membersChart').getContext('2d');
+            const members = {{ entries_data|map(attribute='members')|list|tojson }};
+            const tite = {{ entries_data|map(attribute='tite')|list|tojson }};
+            const dates = {{ entries_data|map(attribute='date')|list|tojson }};
+
+            // Créer des dégradés pour l'effet aquarelle
+            const membersGradient = ctx.createLinearGradient(0, 0, 0, 400);
+            membersGradient.addColorStop(0, 'rgba(56, 178, 172, 0.5)'); // Vert émeraude délavé
+            membersGradient.addColorStop(1, 'rgba(56, 178, 172, 0.1)');
+
+            const titeGradient = ctx.createLinearGradient(0, 0, 0, 400);
+            titeGradient.addColorStop(0, 'rgba(245, 101, 101, 0.5)'); // Rouge délavé
+            titeGradient.addColorStop(1, 'rgba(245, 101, 101, 0.1)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Membres',
+                            data: members,
+                            borderColor: '#38b2ac',
+                            backgroundColor: membersGradient, // Dégradé aquarelle
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#38b2ac',
+                            pointBorderColor: 'rgba(56, 178, 172, 0.5)',
+                            pointHoverBackgroundColor: '#38b2ac',
+                            pointHoverBorderColor: 'rgba(56, 178, 172, 0.5)',
+                            yAxisID: 'y-members',
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'TITE',
+                            data: tite,
+                            borderColor: '#F56565',
+                            backgroundColor: titeGradient, // Dégradé aquarelle
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#F56565',
+                            pointBorderColor: 'rgba(245, 101, 101, 0.5)',
+                            pointHoverBackgroundColor: '#F56565',
+                            pointHoverBorderColor: 'rgba(245, 101, 101, 0.5)',
+                            yAxisID: 'y-tite',
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        },
+                        'y-members': {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Nombre de Membres'
+                            },
+                            beginAtZero: true,
+                            suggestedMax: 2000,
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        },
+                        'y-tite': {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'TITE'
+                            },
+                            beginAtZero: true,
+                            grid: {
+                                drawOnChartArea: true
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                }
+            });
+        {% endif %}
+    });
+</script>
+{% endblock %}

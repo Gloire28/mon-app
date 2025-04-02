@@ -1,0 +1,45 @@
+<!-- app/templates/team_lead/create_district.html -->
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="mt-4">
+    <h1 class="h3 text-dark mb-4">
+        <i class="fas fa-plus-circle me-2" style="color: #38b2ac;"></i>Créer un Nouveau District
+    </h1>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Nouveau District</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    <label for="{{ form.code.id }}" class="form-label">Code du District</label>
+                    {{ form.code(class="form-control", placeholder="Entrez le code du district") }}
+                    {% if form.code.errors %}
+                        {% for error in form.code.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <div class="mb-3">
+                    <label for="{{ form.name.id }}" class="form-label">Nom du District</label>
+                    {{ form.name(class="form-control", placeholder="Entrez le nom du district") }}
+                    {% if form.name.errors %}
+                        {% for error in form.name.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <!-- Les champs type et parent sont pré-remplis et non modifiables -->
+                {{ form.type(hidden=True) }}
+                {{ form.parent(hidden=True) }}
+                <div class="text-end">
+                    {{ form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
