@@ -367,7 +367,7 @@ def export_monthly_report():
     <h1>Rapport Mensuel - {current_user.location.name}</h1>
     <p><strong>Date:</strong> {report.created_at.strftime('%B %Y')}</p>
     <p><strong>Commentaires:</strong></p>
-    <p>{report.comments.replace('\n', '<br>')}</p>
+    comments_processed = report.comments.replace('/n', '<br>')
     """
     pdf_file = BytesIO()
     HTML(string=html_content).write_pdf(pdf_file)
