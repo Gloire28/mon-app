@@ -7,6 +7,7 @@ class Config:
     
     # Configuration base de données
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    BASEDIR = Path(__file__).resolve().parent.parent
     
     # Configuration Celery
     CELERY_BROKER_URL = 'redis://localhost:6379/0'
@@ -15,32 +16,38 @@ class Config:
 
     @classmethod
     def init_app(cls, app):
-        # Configuration spécifique pour GitHub Actions
-        if os.environ.get('GITHUB_ACTIONS') == 'true':
+        # Configuration prioritaire pour les variables d'environnement
+        if os.environ.get('SQLALCHEMY_DATABASE_URI'):
+            app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['SQLALCHEMY_DATABASE_URI']
+        # Configuration pour GitHub Actions
+        elif os.environ.get('GITHUB_ACTIONS') == 'true':
             app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/test.db'
-            try:
-                Path('/tmp/test.db').touch()
-            except Exception as e:
-                app.logger.error(f"Failed to create database file: {e}")
-        else:
-            # Configuration pour le développement local
-            BASEDIR = Path(__file__).resolve().parent.parent
-            DB_PATH = BASEDIR / 'instance' / 'app.db'
+            cls._ensure_db_file(app)
+        # Configuration par défaut
+        elif not app.config.get('SQLALCHEMY_DATABASE_URI'):
+            DB_PATH = cls.BASEDIR / 'instance' / 'app.db'
             app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH.as_posix()}'
-            
-            # Création du dossier instance si inexistant
-            instance_path = cls.BASEDIR / 'instance'
-            instance_path.mkdir(exist_ok=True, mode=0o755)
-            cls.DB_PATH.touch(exist_ok=True)
-            os.chmod(cls.DB_PATH, 0o664)
+            cls._ensure_db_file(app)
+
+    @classmethod
+    def _ensure_db_file(cls, app):
+        """Crée le fichier de base de données si inexistant"""
+        db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+        if db_uri.startswith('sqlite:///'):
+            db_path = db_uri[10:]  # Enlève 'sqlite:///'
+            instance_dir = os.path.dirname(db_path)
+            if instance_dir:
+                os.makedirs(instance_dir, exist_ok=True)
+            Path(db_path).touch(exist_ok=True)
+            os.chmod(db_path, 0o664)
 
 class ProductionConfig(Config):
-    # Configuration pour la production (à adapter)
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', '').replace(
         'postgres://', 'postgresql://') or 'sqlite:///instance/prod.db'
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///instance/dev.db'
 
 class TestingConfig(Config):
     TESTING = True
