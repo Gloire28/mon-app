@@ -362,12 +362,13 @@ def export_monthly_report():
     if not report:
         flash("Aucun rapport mensuel trouvé", "danger")
         return redirect(url_for('team_lead.monthly_report'))
+    comments_processed = report.comments.replace('\n', '<br>')
 
     html_content = f"""
     <h1>Rapport Mensuel - {current_user.location.name}</h1>
     <p><strong>Date:</strong> {report.created_at.strftime('%B %Y')}</p>
     <p><strong>Commentaires:</strong></p>
-    comments_processed = report.comments.replace('/n', '<br>')
+    <p>{comments_processed}</p>
     """
     pdf_file = BytesIO()
     HTML(string=html_content).write_pdf(pdf_file)
