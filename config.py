@@ -17,7 +17,7 @@ class Config:
     def init_app(cls, app):
         # Configuration spécifique pour GitHub Actions
         if os.environ.get('GITHUB_ACTIONS') == 'true':
-            app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
+            app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/test.db'
             try:
                 Path('/tmp/test.db').touch()
             except Exception as e:

@@ -26,22 +26,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
-      - name: Set up environment
+      - name: Set up database
         run: |
-          mkdir -p /tmp
-          touch /tmp/test.db
-          chmod 777 /tmp
-          chmod 666 /tmp/test.db
+          mkdir -p instance
+          touch instance/test.db
+          chmod 777 instance
+          chmod 666 instance/test.db
       
       - name: Run migrations
         env:
           FLASK_APP: run.py
+          SQLALCHEMY_DATABASE_URI: 'sqlite:///instance/test.db'
         run: |
           flask db upgrade
       
       - name: Run application
         env:
           FLASK_APP: run.py
-          GITHUB_ACTIONS: 'true'  # Important pour activer la config CI
+          GITHUB_ACTIONS: 'true'
+          SQLALCHEMY_DATABASE_URI: 'sqlite:///instance/test.db'
         run: |
           python run.py
