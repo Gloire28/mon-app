@@ -1,9 +1,9 @@
-# app/__init__.py
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from config import Config
+import os
 
 # Initialisation des extensions
 db = SQLAlchemy()
@@ -16,6 +16,8 @@ def format_number(value):
         return "{:,.2f}".format(float(value)).replace(",", " ")
     except (ValueError, TypeError):
         return value
+    
+    
 
 def create_app(config_class=Config):
     """Factory d'application Flask"""
@@ -24,7 +26,19 @@ def create_app(config_class=Config):
     # 1. Chargement de la configuration
     app.logger.info("Chargement de la configuration...")
     app.config.from_object(config_class)
-    config_class.init_app(app)  # Configuration dynamique
+    
+    # Configuration spécifique pour GitHub Actions (CI)
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////home/runner/work/mon-app/mon-app/instance/test.db'
+        app.logger.info("Mode CI GitHub Actions détecté - Configuration spéciale appliquée")
+    else:
+        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    # Initialisation dynamique de la configuration
+    config_class.init_app(app)
+    
+    # Log pour confirmer la base de données utilisée
+    app.logger.info(f"Base de données utilisée : {app.config['SQLALCHEMY_DATABASE_URI']}")
     
     # 2. Initialisation des extensions
     app.logger.info("Initialisation de Flask-SQLAlchemy...")
@@ -61,7 +75,6 @@ def create_app(config_class=Config):
     
     # 5. Enregistrement des Blueprints
     app.logger.info("Enregistrement des blueprints...")
-    
     from app.routes.auth import auth_bp
     from app.routes.main import main_bp
     from app.routes.team_lead import team_lead_bp
@@ -74,17 +87,20 @@ def create_app(config_class=Config):
     app.register_blueprint(data_bp)
     app.register_blueprint(data_viewer_bp)
     
-    # 6. Initialisation de la base de données
+    # 6. Initialisation de la base de données avec vérification
     with app.app_context():
         app.logger.info("Vérification des modèles de base de données...")
         try:
+            if not app.config.get('SQLALCHEMY_DATABASE_URI'):
+                raise RuntimeError("Configuration de base de données manquante!")
+                
             db.create_all()
             app.logger.info("Modèles de base de données vérifiés")
         except Exception as e:
             app.logger.critical(f"Erreur d'initialisation de la base: {str(e)}")
             raise
     
-    # 7. Configuration du user loader
+    # 7. Configuration du user loader avec logging
     @login_manager.user_loader
     def load_user(user_id):
         from app.models import User

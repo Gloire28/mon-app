@@ -16,8 +16,8 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-tViUnnbYAV00FLIhhi3v/dWt3aOBC4Jf0S0E2TVe5P0HF6XPU5G9/har2w5S+1+" crossorigin="anonymous">
 
-    <!-- FontAwesome pour les icônes -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
     <!-- Styles personnalisés -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
@@ -28,10 +28,10 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top" style="background-color: #1a3c34;">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('main.home') }}" aria-label="Retour à l'accueil">
+            <a class="navbar-brand" href="{{ url_for('main.home') }}">
                 <i class="fas fa-database me-2"></i>OPTIMIZER
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Basculer la navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -46,18 +46,18 @@
                             </span>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ url_for('auth.logout') }}" class="nav-link" aria-label="Se déconnecter">
+                            <a href="{{ url_for('auth.logout') }}" class="nav-link">
                                 <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
                             </a>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('auth.login') }}" aria-label="Se connecter">
+                            <a class="nav-link" href="{{ url_for('auth.login') }}">
                                 <i class="fas fa-sign-in-alt me-2"></i>Connexion
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('auth.register') }}" aria-label="S'inscrire">
+                            <a class="nav-link" href="{{ url_for('auth.register') }}">
                                 <i class="fas fa-user-plus me-2"></i>Inscription
                             </a>
                         </li>
@@ -72,75 +72,88 @@
         <div class="row">
             <!-- Sidebar -->
             {% if current_user.is_authenticated %}
-            <nav class="col-md-3 col-lg-2 sidebar" aria-label="Navigation latérale">
+            <nav class="col-md-3 col-lg-2 sidebar">
                 <div class="text-center py-3">
-                    <a href="{{ url_for('main.home') }}" class="text-white text-decoration-none" aria-label="Retour à l'accueil">
+                    <a href="{{ url_for('main.home') }}" class="text-white text-decoration-none">
                         <i class="fas fa-database me-2"></i>
                         <span class="fs-5 fw-bold">OPTIMIZER</span>
                     </a>
                 </div>
                 <ul class="nav flex-column">
                     {% block sidebar %}
-                    <!-- Navigation pour Data Viewer -->
+                    <!-- Data Viewer -->
                     {% if current_user.role == 'data_viewer' %}
                         <li class="nav-item">
-                            <a href="{{ url_for('data_viewer.create_region') }}" class="nav-link" aria-label="Créer une nouvelle région">
-                                <i class="fas fa-plus-circle me-2"></i>Nouvelle Région
+                            <a href="{{ url_for('data_viewer.dashboard') }}" class="nav-link">
+                                <i class="fas fa-tachometer-alt me-2"></i>Tableau de Bord
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ url_for('data_viewer.regional_overview') }}" class="nav-link" aria-label="Vue régionale">
-                                <i class="fas fa-map-marked me-2"></i>Vue Régionale
+                            <a href="{{ url_for('data_viewer.create_region') }}" class="nav-link">
+                                <i class="fas fa-map-marked me-2"></i>Créer Région
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ url_for('data_viewer.create_district') }}" class="nav-link" aria-label="Créer un nouveau district">
-                                <i class="fas fa-plus-circle me-2"></i>Créer un District
+                            <a href="{{ url_for('main.promote') }}" class="nav-link">
+                                <i class="fas fa-user-tie me-2"></i>Promotions
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ url_for('main.promote') }}" class="nav-link" aria-label="Gérer les promotions">
-                                <i class="fas fa-arrow-up me-2"></i>Gérer les Promotions
+                            <a href="{{ url_for('main.validate_requests') }}" class="nav-link">
+                                <i class="fas fa-check-double me-2"></i>Validations
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a href="{{ url_for('main.validate_requests') }}" class="nav-link" aria-label="Valider les demandes">
-                                <i class="fas fa-check-circle me-2"></i>Valider les Demandes
-                            </a>
-                        </li>
-                    <!-- Navigation pour Data Entry -->
+
+                    <!-- Data Entry -->
                     {% elif current_user.role == 'data_entry' %}
                         <li class="nav-item">
-                            <a href="{{ url_for('data.new_entry') }}" class="nav-link" aria-label="Créer une nouvelle saisie">
+                            <a href="{{ url_for('data.dashboard') }}" class="nav-link">
+                                <i class="fas fa-tachometer-alt me-2"></i>Tableau de Bord
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('data.new_entry') }}" class="nav-link">
                                 <i class="fas fa-clipboard-list me-2"></i>Nouvelle Saisie
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ url_for('data.change_location') }}" class="nav-link" aria-label="Changer de localisation">
-                                <i class="fas fa-exchange-alt me-2"></i>Changer de Localisation
+                            <a href="{{ url_for('data.change_location') }}" class="nav-link">
+                                <i class="fas fa-exchange-alt me-2"></i>Changer Localisation
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ url_for('data.request_promotion') }}" class="nav-link" aria-label="Demander une promotion">
-                                <i class="fas fa-arrow-up me-2"></i>Demander une Promotion
+                            <a href="{{ url_for('data.request_promotion') }}" class="nav-link">
+                                <i class="fas fa-arrow-up me-2"></i>Demander Promotion
                             </a>
                         </li>
-                    <!-- Navigation pour Team Lead -->
+
+                    <!-- Team Lead -->
                     {% elif current_user.role == 'team_lead' %}
                         <li class="nav-item">
-                            <a href="{{ url_for('team_lead.manage_members') }}" class="nav-link" aria-label="Gérer les membres">
-                                <i class="fas fa-users-cog me-2"></i>Gérer l'Équipe
+                            <a href="{{ url_for('team_lead.dashboard') }}" class="nav-link">
+                                <i class="fas fa-tachometer-alt me-2"></i>Tableau de Bord
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ url_for('team_lead.performance_report') }}" class="nav-link" aria-label="Voir la performance régionale">
-                                <i class="fas fa-chart-line me-2"></i>Performance Régionale
+                            <a href="{{ url_for('team_lead.create_district') }}" class="nav-link">
+                                <i class="fas fa-plus-circle me-2"></i>Créer District
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('team_lead.manage_members') }}" class="nav-link">
+                                <i class="fas fa-users-cog me-2"></i>Gérer Équipe
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('team_lead.performance_report') }}" class="nav-link">
+                                <i class="fas fa-chart-line me-2"></i>Performance
                             </a>
                         </li>
                     {% endif %}
+
                     <!-- Déconnexion -->
                     <li class="nav-item mt-4">
-                        <a href="{{ url_for('auth.logout') }}" class="nav-link text-danger" aria-label="Se déconnecter">
+                        <a href="{{ url_for('auth.logout') }}" class="nav-link text-danger">
                             <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
                         </a>
                     </li>
@@ -154,9 +167,9 @@
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
-                            <div class="alert alert-{{ category }} alert-dismissible fade show mt-4" role="alert">
+                            <div class="alert alert-{{ category }} alert-dismissible fade show mt-4">
                                 {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer l'alerte"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>
                         {% endfor %}
                     {% endif %}

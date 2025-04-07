@@ -1,0 +1,102 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 mt-4" style="margin-left: 240px;">
+    <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom">
+        <h1 class="h3 text-dark">
+            <i class="fas fa-clipboard-list me-2" style="color: #38b2ac;"></i>Nouvelle Saisie
+        </h1>
+    </div>
+
+
+
+    <!-- Messages Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show mb-4">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+
+
+    
+    <!-- Formulaire de Saisie -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-gradient" style="background: linear-gradient(135deg, #38b2ac, #4a5568); color: white;">
+            <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Saisie Hebdomadaire</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" id="data-entry-form">
+                {{ form.hidden_tag() }}
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        {{ form.members.label(class="form-label fw-bold") }}
+                        {{ form.members(class="form-control shadow-sm", placeholder="Total") }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.children.label(class="form-label fw-bold") }}
+                        {{ form.children(class="form-control shadow-sm", placeholder="Enfants") }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.men.label(class="form-label fw-bold") }}
+                        {{ form.men(class="form-control shadow-sm", placeholder="Hommes") }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.women.label(class="form-label fw-bold") }}
+                        {{ form.women(class="form-control shadow-sm", placeholder="Femmes") }}
+                    </div>
+                </div>
+                <div class="row g-3 mt-2">
+                    <div class="col-md-6">
+                        {{ form.tite.label(class="form-label fw-bold") }}
+                        {{ form.tite(class="form-control shadow-sm", placeholder="Montant TITE") }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.location.label(class="form-label fw-bold") }}
+                        {{ form.location(class="form-select shadow-sm") }}
+                    </div>
+                </div>
+                <div class="mt-3">
+                    {{ form.commentaire.label(class="form-label fw-bold") }}
+                    {{ form.commentaire(class="form-control shadow-sm", rows=2, placeholder="Ajoutez un commentaire...") }}
+                </div>
+                <button type="submit" class="btn mt-3" style="background-color: #38b2ac; color: white; width: 200px;">
+                    <i class="fas fa-check-circle me-2"></i>Soumettre
+                </button>
+            </form>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .card { border-radius: 10px; overflow: hidden; }
+    .card-header { font-weight: 500; }
+    .form-control, .form-select { border-radius: 8px; transition: all 0.2s ease; }
+    .form-control:focus, .form-select:focus { border-color: #38b2ac; box-shadow: 0 0 8px rgba(56, 178, 172, 0.3); }
+    .btn:hover { background-color: #2c7a7b; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.getElementById('data-entry-form').addEventListener('submit', function(event) {
+        const members = parseInt(document.getElementById('members').value) || 0;
+        const children = parseInt(document.getElementById('children').value) || 0;
+        const men = parseInt(document.getElementById('men').value) || 0;
+        const women = parseInt(document.getElementById('women').value) || 0;
+        if (members !== (children + men + women)) {
+            event.preventDefault();
+            alert("Le nombre total de membres doit être égal à la somme des enfants, hommes et femmes.");
+        }
+    });
+</script>
+{% endblock %}

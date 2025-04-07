@@ -93,58 +93,68 @@
                                         Région inconnue
                                     {% endif %})
                                 </p>
-                                <div class="d-flex justify-content-around align-items-center">
-                                    <!-- Étape 1 : Validation par le Data Entry -->
-                                    <div class="text-center">
-                                        <div class="p-3 border rounded" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; background-color: {% if change_request_status.rejected and change_request_status.rejected_by == 'Data Entry' %}#f8d7da{% elif change_request_status.data_entry_validated %}#d4edda{% else %}#e2e3e5{% endif %};">
-                                            {% if change_request_status.rejected and change_request_status.rejected_by == 'Data Entry' %}
-                                                <i class="fas fa-times fa-2x" style="color: #dc3545;"></i>
-                                            {% elif change_request_status.data_entry_validated %}
-                                                <i class="fas fa-check fa-2x" style="color: #28a745;"></i>
-                                            {% else %}
-                                                <i class="fas fa-hourglass-half fa-2x" style="color: #6c757d;"></i>
-                                            {% endif %}
-                                        </div>
-                                        <p class="mt-2 mb-0">Validation Data Entry</p>
+                            <div class="d-flex justify-content-around align-items-center">
+                                <!-- Étape 1 : Validation par le Data Entry -->
+                                <div class="text-center">
+                                    <div class="p-3 border rounded" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; background-color: {% if pending_change.status == 'rejected' and pending_change.user_id != current_user.id %}#f8d7da{% elif pending_change.status == 'pending_team_lead' %}#d4edda{% else %}#e2e3e5{% endif %};">
+                                        {% if pending_change.status == 'rejected' and pending_change.user_id != current_user.id %}
+                                            <i class="fas fa-times fa-2x" style="color: #dc3545;"></i>
+                                        {% elif pending_change.status == 'pending_team_lead' %}
+                                             <i class="fas fa-check fa-2x" style="color: #28a745;"></i>
+                                        {% else %}
+                                            <i class="fas fa-hourglass-half fa-2x" style="color: #6c757d;"></i>
+                                        {% endif %}
                                     </div>
-                                    <!-- Étape 2 : Validation par le Team Lead -->
-                                    <div class="text-center">
-                                        <div class="p-3 border rounded" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; background-color: {% if change_request_status.rejected and change_request_status.rejected_by == 'Team Lead' %}#f8d7da{% elif change_request_status.team_lead_validated %}#d4edda{% else %}#e2e3e5{% endif %};">
-                                            {% if change_request_status.rejected and change_request_status.rejected_by == 'Team Lead' %}
-                                                <i class="fas fa-times fa-2x" style="color: #dc3545;"></i>
-                                            {% elif change_request_status.team_lead_validated %}
-                                                <i class="fas fa-check fa-2x" style="color: #28a745;"></i>
-                                            {% else %}
-                                                <i class="fas fa-hourglass-half fa-2x" style="color: #6c757d;"></i>
-                                            {% endif %}
-                                        </div>
-                                        <p class="mt-2 mb-0">Validation Team Lead</p>
-                                    </div>
+                                    <p class="mt-2 mb-0">Validation Data Entry</p>
                                 </div>
-                                {% if pending_change.status == 'rejected' %}
-                                    <p class="mt-3 text-danger">Raison du refus : {{ pending_change.reason or 'Non spécifiée' }}</p>
-                                {% endif %}
-                            {% else %}
-                                <p class="text-muted text-center">Aucune demande de changement de localisation en cours.</p>
+                                <!-- Étape 2 : Validation par le Team Lead -->
+                                <div class="text-center">
+                                    <div class="p-3 border rounded" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; background-color: {% if pending_change.status == 'rejected' and pending_change.user_id == current_user.id %}#f8d7da{% elif pending_change.status == 'accepted' %}#d4edda{% else %}#e2e3e5{% endif %};">
+                                        {% if pending_change.status == 'rejected' and pending_change.user_id == current_user.id %}
+                                            <i class="fas fa-times fa-2x" style="color: #dc3545;"></i>
+                                        {% elif pending_change.status == 'accepted' %}
+                                            <i class="fas fa-check fa-2x" style="color: #28a745;"></i>
+                                        {% else %}
+                                            <i class="fas fa-hourglass-half fa-2x" style="color: #6c757d;"></i>
+                                        {% endif %}
+                                    </div>
+                                    <p class="mt-2 mb-0">Validation Team Lead</p>
+                                </div>
+                            </div>
+                            {% if pending_change.status == 'pending_data_entry' and pending_change.current_data_entry_id == current_user.id %}
+                                <form method="POST" action="{{ url_for('data.respond_request', request_id=pending_change.id) }}" class="mt-3">
+                                    <input type="hidden" name="action" value="accept">
+                                    <button type="submit" class="btn btn-success me-2">Accepter</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('data.respond_request', request_id=pending_change.id) }}" class="mt-3">
+                                    <input type="hidden" name="action" value="reject">
+                                    <input type="text" name="reason" placeholder="Raison du refus" class="form-control mb-2" required>
+                                    <button type="submit" class="btn btn-danger">Refuser</button>
+                                </form>
+                            {% elif pending_change.status == 'rejected' %}
+                                <p class="mt-3 text-danger">Raison du refus : {{ pending_change.reason or 'Non spécifiée' }}</p>
                             {% endif %}
-                        </div>
+                        {% else %}
+                            <p class="text-muted text-center">Aucune demande de changement de localisation en cours.</p>
+                        {% endif %}
                     </div>
                 </div>
-
-                {% if pending_promotion %}
-                <div class="col-md-6">
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header text-dark" style="background-color: #b2f5ea;">
-                            <h5 class="mb-0"><i class="fas fa-arrow-up me-2"></i>Demande de Promotion</h5>
-                        </div>
-                        <div class="card-body">
-                            <p class="mb-0">Région : <strong>{{ pending_promotion.requested_region.name }}</strong></p>
-                            <span class="badge bg-success mt-2">En attente</span>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
             </div>
+
+            {% if pending_promotion %}
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header text-dark" style="background-color: #b2f5ea;">
+                        <h5 class="mb-0"><i class="fas fa-arrow-up me-2"></i>Demande de Promotion</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">Région : <strong>{{ pending_promotion.requested_region.name }}</strong></p>
+                        <span class="badge bg-success mt-2">En attente</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
 
             <!-- Affiliation -->
             <div class="card shadow-sm mb-4">

@@ -29,13 +29,20 @@ def dashboard():
         # Charger les entrées récentes
         entries = DataEntry.query.filter_by(user_id=current_user.id).order_by(DataEntry.date.desc()).limit(10).all()
         
-        # Charger la demande de changement avec ses relations
-        pending_change = ChangeRequest.query\
+        # Charger la demande initiée par l'utilisateur
+        initiated_change = ChangeRequest.query\
             .filter_by(user_id=current_user.id)\
             .options(joinedload(ChangeRequest.new_district), joinedload(ChangeRequest.new_region))\
             .order_by(ChangeRequest.requested_at.desc())\
             .first()
-        current_app.logger.debug(f"pending_change chargé : {pending_change}")
+        current_app.logger.debug(f"Demande initiée chargée : {initiated_change}")
+        
+        # Charger la demande en attente de validation par l'utilisateur actuel (en tant que data_entry cible)
+        pending_change = ChangeRequest.query\
+            .filter_by(current_data_entry_id=current_user.id, status='pending_data_entry')\
+            .options(joinedload(ChangeRequest.new_district), joinedload(ChangeRequest.new_region), joinedload(ChangeRequest.user))\
+            .first()
+        current_app.logger.debug(f"Demande en attente de validation chargée : {pending_change}")
         
         # Charger la demande de promotion avec sa relation
         pending_promotion = PromotionRequest.query\
@@ -44,26 +51,25 @@ def dashboard():
             .first()
         current_app.logger.debug(f"pending_promotion chargé : {pending_promotion}")
 
-        # Déterminer l'état des étapes pour la demande de changement
+        # Déterminer l'état des étapes pour la demande initiée
         change_request_status = type('Status', (), {
             'data_entry_validated': False,
             'team_lead_validated': False,
             'rejected': False,
             'rejected_by': None
         })()
-        if pending_change:
-            if pending_change.status in ['pending_team_lead', 'accepted']:
+        if initiated_change:
+            if initiated_change.status in ['pending_team_lead', 'accepted']:
                 change_request_status.data_entry_validated = True
-            if pending_change.status == 'accepted':
+            if initiated_change.status == 'accepted':
                 change_request_status.team_lead_validated = True
-            if pending_change.status == 'rejected':
+            if initiated_change.status == 'rejected':
                 change_request_status.rejected = True
                 # Déterminer qui a rejeté la demande
-                if pending_change.status == 'rejected' and pending_change.responded_at:
-                    if pending_change.status == 'rejected' and not change_request_status.data_entry_validated:
-                        change_request_status.rejected_by = 'Data Entry'
-                    else:
-                        change_request_status.rejected_by = 'Team Lead'
+                if initiated_change.status == 'rejected' and not change_request_status.data_entry_validated:
+                    change_request_status.rejected_by = 'Data Entry'
+                else:
+                    change_request_status.rejected_by = 'Team Lead'
 
     # Préparer les données pour le graphique
     entries_data = [
@@ -81,7 +87,7 @@ def dashboard():
                           entries_data=entries_data,
                           user_location=current_user.location,
                           parent_region=current_user.location.parent if current_user.location else None,
-                          pending_change=pending_change,
+                          pending_change=pending_change or initiated_change,  # Afficher soit la demande initiée, soit celle en attente
                           change_request_status=change_request_status,
                           pending_promotion=pending_promotion)
 
@@ -165,25 +171,39 @@ def change_location():
 
                 # Vérifier si un data_entry est assigné au district
                 existing_data_entry = User.query.filter_by(location_id=new_district_id, role='data_entry').first()
+                current_data_entry_id = existing_data_entry.id if existing_data_entry and existing_data_entry.id != current_user.id else None
 
                 # Vérifier si un team_lead existe pour la région
                 team_lead = User.query.filter_by(role='team_lead', location_id=new_district.parent_id).first()
-                if not team_lead and not (existing_data_entry and existing_data_entry.id != current_user.id):
-                    flash("Erreur : Aucun Team Lead trouvé pour cette région.", 'danger')
+                team_lead_id = team_lead.id if team_lead else None
+
+                if not team_lead and not current_data_entry_id:
+                    flash("Erreur : Aucun Team Lead ou Data Entry trouvé pour valider cette demande.", 'danger')
                     return redirect(url_for('data.change_location'))
 
                 # Créer une ChangeRequest avec un statut initial
+                team_lead = User.query.filter_by(
+                    role='team_lead',
+                    location_id=new_district.parent_id
+                ).first()
+                if not team_lead:
+                    flash("Aucun Team Lead trouvé pour cette région", 'danger')
+                    return redirect(url_for('data.change_location'))
+                
                 request_entry = ChangeRequest(
                     user_id=current_user.id,
                     new_region_id=new_district.parent_id,
                     new_district_id=new_district_id,
-                    status='pending_data_entry' if existing_data_entry and existing_data_entry.id != current_user.id else 'pending_team_lead',
-                    requested_at=datetime.utcnow()
+                    status='pending_data_entry' if current_data_entry_id else 'pending_team_lead',
+                    requested_at=datetime.utcnow(),
+                    current_data_entry_id=current_data_entry_id,
+                    team_lead_id=team_lead.id
                 )
                 db.session.add(request_entry)
+            
 
                 # Ajouter une notification
-                recipient = existing_data_entry if existing_data_entry and existing_data_entry.id != current_user.id else team_lead
+                recipient = existing_data_entry if current_data_entry_id else team_lead
                 if recipient:
                     notification = Notification(
                         user_id=recipient.id,
@@ -205,60 +225,87 @@ def change_location():
 
     return render_template('data_entry/change_location.html', form=form, step='region')
 
-
 @data_bp.route('/respond_request/<int:request_id>', methods=['POST'])
 @login_required
 def respond_request(request_id):
+    """Handle data entry's response to change location requests"""
     if current_user.role != 'data_entry':
         abort(403)
 
-    with current_app.app_context():
-        request_entry = ChangeRequest.query.get_or_404(request_id)
-        # Vérifier que la demande est en attente de validation par le data_entry et que l'utilisateur est le bon
-        if request_entry.status != 'pending_data_entry' or current_user.location_id != request_entry.new_district_id:
+    try:
+        # Get and validate request
+        request_entry = ChangeRequest.query.options(
+            joinedload(ChangeRequest.new_district),
+            joinedload(ChangeRequest.new_region),
+            joinedload(ChangeRequest.user)
+        ).get_or_404(request_id)
+        
+        if (request_entry.status != 'pending_data_entry' or 
+            request_entry.current_data_entry_id != current_user.id):
             abort(403)
 
         action = request.form.get('action')
+        district_name = request_entry.new_district.name if request_entry.new_district else "Nouveau district"
 
         if action == 'accept':
+            # Validate and process acceptance
+            team_lead = User.query.filter_by(
+                role='team_lead',
+                location_id=request_entry.new_region_id
+            ).first()
+            
+            if not team_lead:
+                flash("Aucun Team Lead trouvé pour cette région", 'danger')
+                return redirect(url_for('data.dashboard'))
+
+            # Update request status
             request_entry.status = 'pending_team_lead'
+            request_entry.team_lead_id = team_lead.id
             request_entry.responded_at = datetime.utcnow()
-            # Notifier le team_lead de la région
-            team_lead = User.query.filter_by(role='team_lead', location_id=request_entry.new_region_id).first()
-            if team_lead:
-                notification = Notification(
+            
+            # Create notifications
+            notifications = [
+                Notification(
                     user_id=team_lead.id,
-                    message=f"Le Data Entry {current_user.name} a accepté la demande de changement de localisation de {request_entry.user.name} pour le district {request_entry.new_district.name}.",
+                    message=f"Nouvelle demande de transfert pour {district_name} de {request_entry.user.name}",
+                    created_at=datetime.utcnow()
+                ),
+                Notification(
+                    user_id=request_entry.user_id,
+                    message=f"Votre demande pour {district_name} est en attente du Team Lead",
                     created_at=datetime.utcnow()
                 )
-                db.session.add(notification)
-            else:
-                flash("Erreur : Aucun Team Lead trouvé pour cette région.", 'danger')
-                return redirect(url_for('data.dashboard'))
-            # Notifier le demandeur
-            notification = Notification(
-                user_id=request_entry.user_id,
-                message=f"Votre demande de changement de localisation pour {request_entry.new_district.name} a été acceptée par le Data Entry. En attente de validation par le Team Lead.",
-                created_at=datetime.utcnow()
-            )
-            db.session.add(notification)
-            flash("Demande acceptée. Elle a été transmise au Team Lead.", 'success')
+            ]
+            db.session.add_all(notifications)
+            flash("Demande transmise au Team Lead", 'success')
+
         elif action == 'reject':
-            reason = request.form.get('reason')
+            # Handle rejection
+            reason = request.form.get('reason', 'Non spécifié').strip()
+            if not reason:
+                flash("Veuillez fournir une raison", 'danger')
+                return redirect(url_for('data.dashboard'))
+                
             request_entry.status = 'rejected'
             request_entry.reason = reason
             request_entry.responded_at = datetime.utcnow()
-            # Notifier le demandeur
-            notification = Notification(
+            
+            db.session.add(Notification(
                 user_id=request_entry.user_id,
-                message=f"Votre demande de changement de localisation pour {request_entry.new_district.name} a été rejetée par le Data Entry. Raison : {reason}.",
+                message=f"Votre demande pour {district_name} a été rejetée. Raison: {reason}",
                 created_at=datetime.utcnow()
-            )
-            db.session.add(notification)
-            flash(f"Demande rejetée avec la raison : {reason}.", 'info')
-        db.session.commit()
+            ))
+            flash("Demande rejetée", 'info')
 
-    return redirect(url_for('data.dashboard'))
+        db.session.commit()
+        return redirect(url_for('data.dashboard'))
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error in respond_request: {str(e)}", exc_info=True)
+        flash("Erreur lors du traitement", 'danger')
+        return redirect(url_for('data.dashboard'))
+    
 
 @data_bp.route('/request-promotion', methods=['GET', 'POST'])
 @login_required

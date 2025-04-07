@@ -7,6 +7,7 @@ from wtforms import (
 from wtforms.validators import DataRequired, Length, Optional, ValidationError, EqualTo, NumberRange
 from app.models import User, Location
 from datetime import datetime
+from app import db
 
 class RegistrationForm(FlaskForm):
     """Formulaire d'inscription pour les nouveaux utilisateurs."""
@@ -103,17 +104,35 @@ class TeamManagementForm(FlaskForm):
     submit_add = SubmitField('Ajouter')
     submit_remove = SubmitField('Retirer')
 
-    def load_locations(self, region_id=None):
-        """Charge dynamiquement les localisations (districts) pour une région donnée."""
-        if region_id:
-            self.location.choices = [(loc.id, loc.name) for loc in Location.query.filter_by(parent_id=region_id, type='DIS').all()]
-        else:
-            self.location.choices = [(loc.id, loc.name) for loc in Location.query.filter_by(type='DIS').all()]
+    def load_locations(self, region_id):
+        """Charge dynamiquement les districts pour une région donnée."""
+        self.location.choices = [(loc.id, loc.name) 
+                               for loc in Location.query.filter_by(
+                                   parent_id=region_id,
+                                   type='DIS'
+                               ).all()]
 
-    def load_members(self, team_lead_id=None):
-        """Charge dynamiquement tous les membres potentiels (data_entry)."""
-        members = User.query.filter_by(role='data_entry').all()
-        self.member.choices = [(user.id, user.name) for user in members]
+    def load_members(self, region_id=None):
+        """Charge les data_entry non assignés ou dans les districts de la région."""
+        if region_id:
+            # Récupérer les districts de la région
+            district_ids = [d.id for d in 
+                          Location.query.filter_by(parent_id=region_id, type='DIS').all()]
+            
+            # Membres data_entry dans ces districts OU non assignés
+            members = User.query.filter(
+                User.role == 'data_entry',
+                db.or_(
+                    User.location_id.in_(district_ids) if district_ids else False,
+                    User.location_id.is_(None)
+                )
+            ).all()
+        else:
+            # Tous les data_entry si aucune région spécifiée
+            members = User.query.filter_by(role='data_entry').all()
+            
+        self.member.choices = [(m.id, m.name) for m in members]
+
 
 class SelectRegionForm(FlaskForm):
     """Formulaire pour sélectionner une région (utilisé par team_lead pour changer de région)."""

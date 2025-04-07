@@ -6,17 +6,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     
-    services:
-      redis:
-        image: redis
-        ports:
-          - 6379:6379
-        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
@@ -26,22 +19,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
-      - name: Set up database
+      - name: Prepare environment
+        env:
+          DATABASE_URI: sqlite:///${{ github.workspace }}/instance/production.db
         run: |
           mkdir -p instance
-          touch instance/test.db
-          chmod 666 instance/test.db
+          touch instance/production.db
+          chmod 644 instance/production.db
+          echo "SQLALCHEMY_DATABASE_URI=$DATABASE_URI" >> .env
       
       - name: Run migrations
         env:
           FLASK_APP: run.py
-          GITHUB_ACTIONS: 'true'
+          FLASK_ENV: production
         run: |
           flask db upgrade
+      
+      - name: Run tests
+        run: |
+          pytest tests/ -v
       
       - name: Run application
         env:
           FLASK_APP: run.py
-          GITHUB_ACTIONS: 'true'
+          FLASK_ENV: production
         run: |
-          python run.py
+          gunicorn --bind 0.0.0.0:$PORT run:app

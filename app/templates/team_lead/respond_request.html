@@ -1,0 +1,53 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="mt-4">
+    <h1 class="h3 text-dark mb-4">
+        <i class="fas fa-hourglass-half me-2" style="color: #38b2ac;"></i>Répondre à la Demande
+    </h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show mb-4">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Demande de {{ request.user.name }}</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Région demandée:</strong> {{ request.new_region.name }}</p>
+            <p><strong>District demandé:</strong> {{ request.new_district.name if request.new_district else 'N/A' }}</p>
+            
+            <form method="POST" class="mb-3">
+                <input type="hidden" name="action" value="accept">
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-check me-2"></i>Accepter
+                </button>
+            </form>
+
+            <form method="POST">
+                <input type="hidden" name="action" value="reject">
+                <div class="mb-3">
+                    <label for="reason" class="form-label">Raison du refus:</label>
+                    <select class="form-select" name="reason" required>
+                        <option value="">Sélectionnez une raison</option>
+                        <option value="retraite">Retraite</option>
+                        <option value="non averti">Je n'ai pas été averti</option>
+                        <option value="non interesse">Je ne suis pas intéressé</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-times me-2"></i>Rejeter
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

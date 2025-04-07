@@ -80,7 +80,7 @@
                                         <div class="progress-bar bg-{{ data.performance.performance_class }}" style="width: {{ data.performance.total_score }}%"></div>
                                     </div>
                                 </p>
-                                <a href="{{ url_for('data_viewer_bp.team_details', region_id=data.region.id) }}" class="btn btn-outline-primary w-100" data-bs-toggle="tooltip" title="Voir les rapports de cette région">
+                                <a href="{{ url_for('data_viewer.team_details', region_id=data.region.id) }}" class="btn btn-outline-primary w-100">
                                     <i class="fas fa-users me-2"></i>Voir les rapports
                                 </a>
                             </div>
@@ -173,7 +173,7 @@
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-users me-2"></i>Utilisateurs</h5>
-            <a href="{{ url_for('data_viewer_bp.export_user_data') }}" class="btn btn-sm btn-light" data-bs-toggle="tooltip" title="Exporter les données des utilisateurs en CSV">
+            <a href="{{ url_for('data_viewer.export_user_data') }}" class="btn btn-sm btn-light" data-bs-toggle="tooltip" title="Exporter les données des utilisateurs en CSV">
                 <i class="fas fa-file-excel me-2"></i>Exporter
             </a>
         </div>
