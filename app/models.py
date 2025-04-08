@@ -1,5 +1,6 @@
 # app/models.py
 from datetime import datetime
+from typing import Self
 
 from flask import current_app
 from app import db
@@ -87,170 +88,114 @@ class ChangeRequest(db.Model):
     __tablename__ = 'change_requests'
     
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    new_region_id = db.Column(db.Integer, db.ForeignKey('locations.id'), nullable=False)
-    new_district_id = db.Column(db.Integer, db.ForeignKey('locations.id'), nullable=True)
-    
-    # Statut amélioré avec workflow clair
-    status = db.Column(db.String(20), default='pending_data_entry')
-    reason = db.Column(db.String(200), nullable=True)  # Raison du rejet
-    
-    # Timestamps
+    # L'utilisateur qui fait la demande (Juste)
+    requester_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    # Le district cible demandé (Cotonou)
+    target_district_id = db.Column(db.Integer, db.ForeignKey('locations.id'), nullable=False)
+    # Statut de la demande avec un workflow clair
+    status = db.Column(db.String(20), default='pending_data_entry', nullable=False)
+    # Raison du rejet (optionnel)
+    reason = db.Column(db.String(200), nullable=True)
+    # Timestamps pour suivre le processus
     requested_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    responded_at = db.Column(db.DateTime, nullable=True)
+    data_entry_responded_at = db.Column(db.DateTime, nullable=True)
+    team_lead_responded_at = db.Column(db.DateTime, nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)
     
-    # Références aux validateurs
-    current_data_entry_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    team_lead_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    
     # Relations
-    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('change_requests', lazy='dynamic'))
-    new_region = db.relationship('Location', foreign_keys=[new_region_id])
-    new_district = db.relationship('Location', foreign_keys=[new_district_id])
-    
-    # Relations pour les validateurs
-    current_data_entry = db.relationship(
-        'User', 
-        foreign_keys=[current_data_entry_id],
-        backref=db.backref('pending_change_requests_to_validate', lazy='dynamic')
-    )
-    
-    team_lead = db.relationship(
-        'User',
-        foreign_keys=[team_lead_id],
-        backref=db.backref('team_lead_change_requests', lazy='dynamic')
-    )
+    requester = db.relationship('User', foreign_keys=[requester_id], backref=db.backref('change_requests_made', lazy='dynamic'))
+    target_district = db.relationship('Location', foreign_keys=[target_district_id])
     
     # Contraintes
     __table_args__ = (
-        CheckConstraint(
+        db.CheckConstraint(
             "status IN ('pending_data_entry', 'pending_team_lead', 'accepted', 'rejected')",
             name='check_change_request_status'
         ),
-        CheckConstraint(
-            "(status IN ('pending_data_entry') AND current_data_entry_id IS NOT NULL) OR "
-            "(status IN ('pending_team_lead') AND team_lead_id IS NOT NULL) OR "
-            "(status IN ('accepted', 'rejected'))",
-            name='check_validator_assignment'
+        db.CheckConstraint(
+            "data_entry_responded_at IS NULL OR data_entry_responded_at >= requested_at",
+            name='check_data_entry_response_timing'
         ),
-        CheckConstraint(
-            "responded_at IS NULL OR responded_at >= requested_at",
-            name='check_response_timing'
+        db.CheckConstraint(
+            "team_lead_responded_at IS NULL OR team_lead_responded_at >= data_entry_responded_at",
+            name='check_team_lead_response_timing'
         )
     )
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Déterminer automatiquement le statut initial
         if not self.status:
-            self.status = 'pending_team_lead' if not self.current_data_entry_id else 'pending_data_entry'
+            self.status = 'pending_data_entry'
 
-    def accept_by_data_entry(self):
-        """Transition lorsque le Data Entry accepte la demande"""
+    def approve_by_data_entry(self):
+        """Approuver la demande par le Data Entry actuel du district cible (Gamal)"""
         if self.status != 'pending_data_entry':
-            raise ValueError("Seules les demandes pending_data_entry peuvent être acceptées par un Data Entry")
+            raise ValueError("La demande doit être en attente de validation par le Data Entry.")
         
-        # Validation de la hiérarchie région/district
-        if self.new_district_id:
-            district = Location.query.get(self.new_district_id)
-            if not district or district.parent_id != self.new_region_id:
-                raise ValueError("Incohérence région/district")
+        # Vérifier que le district cible existe et obtenir sa région
+        district = db.session.get(Location, self.target_district_id)
+        if not district or district.type != 'DIS':
+            raise ValueError("Le district cible est invalide.")
         
-        # Trouver le Team Lead de la nouvelle région
-        team_lead = User.query.filter_by(
-            role='team_lead',
-            location_id=self.new_region_id
-        ).first()
-        
-        if not team_lead:
-            raise ValueError(f"Aucun Team Lead trouvé pour la région ID {self.new_region_id}")
-        
-        # Transition d'état
+        # Passer à l'étape suivante : validation par le Team Lead
         self.status = 'pending_team_lead'
-        self.team_lead_id = team_lead.id
-        self.responded_at = datetime.utcnow()
-
-        # Persistance avec gestion d'erreur
-        try:
-            db.session.commit()
-            current_app.logger.info(
-                f"Demande {self.id} - Transition à pending_team_lead réussie. "
-                f"Team Lead ID: {team_lead.id}, District ID: {self.new_district_id}"
-            )
-            return True
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(
-                f"Erreur DB sur demande {self.id}: {str(e)}",
-                exc_info=True
-            )
-        raise ValueError("Erreur système lors de la mise à jour de la demande")
-        
-        # Mise à jour du statut
-        self.status = 'pending_team_lead'
-        self.team_lead_id = team_lead.id
-        self.responded_at = datetime.utcnow()
-        
-        # Persistance en base de données
+        self.data_entry_responded_at = datetime.utcnow()
         db.session.commit()
         
-        # Journalisation
-        current_app.logger.info(
-            f"Demande {self.id} acceptée par Data Entry, "
-            f"transférée à Team Lead {team_lead.name}"
-        )
+        current_app.logger.info(f"Demande {self.id} approuvée par le Data Entry, en attente du Team Lead.")
 
     def reject_by_data_entry(self, reason):
-        """Transition lorsque le Data Entry rejette la demande"""
+        """Rejeter la demande par le Data Entry actuel (Gamal)"""
         if self.status != 'pending_data_entry':
-            raise ValueError("Seules les demandes pending_data_entry peuvent être rejetées par un Data Entry")
-        
+            raise ValueError("La demande doit être en attente de validation par le Data Entry.")
         if not reason or len(reason) < 10:
-            raise ValueError("La raison doit contenir au moins 10 caractères")
+            raise ValueError("La raison du rejet doit contenir au moins 10 caractères.")
         
         self.status = 'rejected'
         self.reason = reason
-        self.responded_at = datetime.utcnow()
+        self.data_entry_responded_at = datetime.utcnow()
         self.completed_at = datetime.utcnow()
-        
         db.session.commit()
+        
+        current_app.logger.info(f"Demande {self.id} rejetée par le Data Entry : {reason}")
 
-    def accept_by_team_lead(self):
-        """Transition lorsque le Team Lead accepte la demande"""
+    def approve_by_team_lead(self):
+        """Approuver la demande par le Team Lead de la région cible (Spero)"""
         if self.status != 'pending_team_lead':
-            raise ValueError("Seules les demandes pending_team_lead peuvent être acceptées par un Team Lead")
+            raise ValueError("La demande doit être en attente de validation par le Team Lead.")
         
-        # Validation de la hiérarchie
-        if self.new_district_id:
-            if not Location.query.get(self.new_district_id):
-                raise ValueError("District invalide")
+        # Vérifier le district cible
+        district = db.session.get(Location, self.target_district_id)
+        if not district or district.type != 'DIS':
+            raise ValueError("Le district cible est invalide.")
         
+        # Mettre à jour la localisation du demandeur (Juste)
+        requester = db.session.get(User, self.requester_id)
+        requester.location_id = self.target_district_id
         self.status = 'accepted'
-        self.responded_at = datetime.utcnow()
+        self.team_lead_responded_at = datetime.utcnow()
         self.completed_at = datetime.utcnow()
-        
-        # Mettre à jour la localisation de l'utilisateur
-        self.user.location_id = self.new_district_id or self.new_region_id
         db.session.commit()
+        
+        current_app.logger.info(f"Demande {self.id} approuvée par le Team Lead. {requester.name} assigné à {district.name}.")
 
     def reject_by_team_lead(self, reason):
-        """Transition lorsque le Team Lead rejette la demande"""
+        """Rejeter la demande par le Team Lead (Spero)"""
         if self.status != 'pending_team_lead':
-            raise ValueError("Seules les demandes pending_team_lead peuvent être rejetées par un Team Lead")
-        
+            raise ValueError("La demande doit être en attente de validation par le Team Lead.")
         if not reason or len(reason) < 10:
-            raise ValueError("La raison doit contenir au moins 10 caractères")
+            raise ValueError("La raison du rejet doit contenir au moins 10 caractères.")
         
         self.status = 'rejected'
         self.reason = reason
-        self.responded_at = datetime.utcnow()
+        self.team_lead_responded_at = datetime.utcnow()
         self.completed_at = datetime.utcnow()
-        
         db.session.commit()
+        
+        current_app.logger.info(f"Demande {self.id} rejetée par le Team Lead : {reason}")
 
     def get_status_display(self):
-        """Retourne la version lisible du statut"""
+        """Afficher une version lisible du statut"""
         status_map = {
             'pending_data_entry': 'En attente du Data Entry',
             'pending_team_lead': 'En attente du Team Lead',

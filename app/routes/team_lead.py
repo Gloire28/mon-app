@@ -458,9 +458,9 @@ def dashboard():
 
         # Get pending change requests
         pending_requests = ChangeRequest.query.filter(
-            ChangeRequest.new_region_id == user_location.id,
+            ChangeRequest.team_lead_id == current_user.id,
             ChangeRequest.status == 'pending_team_lead',
-            ChangeRequest.team_lead_id == current_user.id
+            ChangeRequest.new_region_id == current_user.location_id
         ).options(
             joinedload(ChangeRequest.new_district),
             joinedload(ChangeRequest.new_region),
