@@ -1,2 +1,4 @@
-node_modules/
-echo ".env" >> .gitignore
+*.db
+.env
+*.xlsx
+*.DS_Store
