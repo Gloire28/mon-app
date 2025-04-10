@@ -10,7 +10,6 @@ from datetime import datetime
 from app import db
 
 class RegistrationForm(FlaskForm):
-    """Formulaire d'inscription pour les nouveaux utilisateurs."""
     name = StringField('Nom complet', validators=[DataRequired(), Length(min=2, max=100)])
     matriculate = StringField('Matricule', validators=[DataRequired(), Length(min=5, max=20)])
     phone = StringField('Téléphone', validators=[DataRequired(), Length(min=8, max=15)])
@@ -21,35 +20,37 @@ class RegistrationForm(FlaskForm):
         ('team_lead', 'Chef d\'équipe'),
         ('data_viewer', 'Visionneur')
     ], validators=[DataRequired()])
-    location = SelectField('Localisation', coerce=int, validators=[DataRequired()])
+    location = SelectField('Localisation', coerce=int, validators=[Optional()])
     submit = SubmitField('S\'inscrire')
 
     def load_locations(self):
-        """Charge dynamiquement les localisations disponibles."""
         if self.role.data == 'data_entry':
             self.location.choices = [(loc.id, loc.name) for loc in Location.query.filter_by(type='DIS').all()]
+        elif self.role.data == 'team_lead':
+            self.location.choices = [(loc.id, loc.name) for loc in Location.query.filter_by(type='REG').all()]
+        elif self.role.data == 'data_viewer':
+            self.location.choices = [(0, 'Aucune')]
         else:
             self.location.choices = [(loc.id, loc.name) for loc in Location.query.all()]
-        
 
     def validate_matriculate(self, field):
-        """Vérifie que le matricule n'est pas déjà utilisé."""
         if User.query.filter_by(matriculate=field.data).first():
             raise ValidationError('Ce matricule est déjà utilisé.')
 
     def validate_phone(self, field):
-        """Vérifie que le numéro de téléphone n'est pas déjà utilisé."""
         if User.query.filter_by(phone=field.data).first():
             raise ValidationError('Ce numéro de téléphone est déjà utilisé.')
         
     def validate_location(self, field):
-        """Valide que la localisation est un district pour un data_entry."""
+        if self.role.data == 'data_viewer':
+            return  # Pas de validation pour data_viewer
         location = Location.query.get(field.data)
         if self.role.data == 'data_entry' and location and location.type != 'DIS':
             raise ValidationError('Un utilisateur de type Data Entry doit être assigné à un district, pas à une région.')
         if self.role.data == 'team_lead' and location and location.type != 'REG':
             raise ValidationError('Un utilisateur de type Team Lead doit être assigné à une région, pas à un district.')
-
+        
+        
 class LoginForm(FlaskForm):
     """Formulaire de connexion pour les utilisateurs."""
     matriculate = StringField('Matricule', validators=[DataRequired()])

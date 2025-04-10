@@ -14,19 +14,21 @@ def register():
         return redirect(url_for('main.dashboard'))
     
     form = RegistrationForm()
-    with current_app.app_context():  # Ajouter un contexte explicite pour charger les localisations
+    with current_app.app_context():
         form.load_locations()
     
     if form.validate_on_submit():
-        with current_app.app_context():  # Contexte pour les opérations de base de données
+        with current_app.app_context():
             hashed_password = generate_password_hash(form.password.data)
+            # Définir location_id à None pour data_viewer si la valeur est 0
+            location_id = form.location.data if form.location.data != 0 else None
             user = User(
                 name=form.name.data,
                 matriculate=form.matriculate.data,
                 phone=form.phone.data,
                 password=hashed_password,
                 role=form.role.data,
-                location_id=form.location.data
+                location_id=location_id  # Utiliser location_id corrigé
             )
             db.session.add(user)
             db.session.commit()
@@ -42,7 +44,7 @@ def login():
     
     form = LoginForm()
     if form.validate_on_submit():
-        with current_app.app_context():  # Contexte pour la requête
+        with current_app.app_context():
             user = User.query.filter_by(matriculate=form.matriculate.data).first()
             if user and check_password_hash(user.password, form.password.data):
                 login_user(user)

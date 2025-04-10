@@ -45,16 +45,16 @@
                         
                         <div class="mb-3">
                             {{ form.role.label(class="form-label") }}
-                            {{ form.role(class="form-select") }}
+                            {{ form.role(class="form-select", id="role-select") }}
                             {% for error in form.role.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
                         </div>
 
                         <!-- Ajouter le champ localisation -->
-                        <div class="mb-3">
+                        <div class="mb-3" id="location-field">
                             {{ form.location.label(class="form-label") }}
-                            {{ form.location(class="form-select") }}
+                            {{ form.location(class="form-select", id="location") }}
                             {% for error in form.location.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
@@ -102,4 +102,27 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.getElementById('role-select').addEventListener('change', function() {
+        var role = this.value;
+        var locationField = document.getElementById('location-field');
+        if (role === 'data_viewer') {
+            locationField.style.display = 'none';  // Masquer le champ
+            document.getElementById('location').value = '0';  // Définir la valeur par défaut
+        } else {
+            locationField.style.display = 'block';  // Afficher le champ
+        }
+    });
+
+    // Exécuter au chargement de la page pour gérer le cas où le formulaire est rechargé avec des erreurs
+    window.onload = function() {
+        var role = document.getElementById('role-select').value;
+        var locationField = document.getElementById('location-field');
+        if (role === 'data_viewer') {
+            locationField.style.display = 'none';
+            document.getElementById('location').value = '0';
+        }
+    };
+</script>
 {% endblock %}
