@@ -1,3 +1,4 @@
+import os
 from app import create_app
 from config import DevelopmentConfig, ProductionConfig, TestingConfig
 from os import environ
@@ -11,8 +12,19 @@ config_map = {
 }
 config_class = config_map.get(env, DevelopmentConfig)  # Par défaut : DevelopmentConfig
 
-# Créer l'application
+# Créer l'application avec un static_folder explicite
 app = create_app(config_class)
+
+# Vérifier que le dossier static existe
+static_folder = os.path.join(app.root_path, 'static')
+if not os.path.exists(static_folder):
+    app.logger.error(f"Le dossier static n'existe pas à l'emplacement : {static_folder}")
+else:
+    app.logger.info(f"Dossier static trouvé à : {static_folder}")
+
+# S'assurer que Flask utilise le bon dossier static
+app.static_folder = static_folder
+app.static_url_path = '/static'
 
 # Initialiser la base de données
 config_class.init_app(app)
