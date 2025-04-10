@@ -8,48 +8,60 @@ from datetime import datetime
 import logging
 from sqlalchemy.orm import joinedload
 
+# Création du blueprint pour les routes du rôle data_entry
 data_bp = Blueprint('data', __name__, url_prefix='/data')
 
+# Configuration du logging pour le débogage
 logging.basicConfig(level=logging.DEBUG)
 
-# Middleware pour vérifier le rôle Data Entry
+# Middleware pour vérifier que l'utilisateur a le rôle data_entry
 def check_data_entry_role():
     if current_user.role != 'data_entry':
         abort(403)
 
-from sqlalchemy.orm import joinedload
-
+# Route : Tableau de bord du Data Entry
 @data_bp.route('/dashboard', methods=['GET'])
 @login_required
 def dashboard():
+    """
+    Affiche le tableau de bord pour un utilisateur data_entry.
+    - Entrées récentes de l'utilisateur.
+    - Demande de changement de localisation initiée par l'utilisateur.
+    - Demandes de changement de localisation en attente de validation par l'utilisateur.
+    - Demande de promotion en cours.
+    """
     current_app.logger.debug(f"Utilisateur {current_user.name} accède à data.dashboard")
     check_data_entry_role()
     
     with current_app.app_context():
-        # Charger les entrées récentes
+        # Charger les entrées récentes de l'utilisateur
         entries = DataEntry.query.filter_by(user_id=current_user.id).order_by(DataEntry.date.desc()).limit(10).all()
         
-        # Charger la demande initiée par l'utilisateur
+        # Charger la demande de changement de localisation initiée par l'utilisateur
         initiated_change = ChangeRequest.query\
-            .filter_by(user_id=current_user.id)\
-            .options(joinedload(ChangeRequest.new_district), joinedload(ChangeRequest.new_region))\
+            .filter_by(requester_id=current_user.id)\
+            .options(joinedload(ChangeRequest.requester), joinedload(ChangeRequest.target_district), joinedload(ChangeRequest.target_region))\
             .order_by(ChangeRequest.requested_at.desc())\
             .first()
         current_app.logger.debug(f"Demande initiée chargée : {initiated_change}")
         
-        # Charger la demande en attente de validation par l'utilisateur actuel (en tant que data_entry cible)
+        # Charger les demandes de changement de localisation en attente de validation par l'utilisateur
+        # (par exemple, Gamal doit voir les demandes ciblant "Cotonou")
         pending_change = ChangeRequest.query\
-            .filter_by(current_data_entry_id=current_user.id, status='pending_data_entry')\
-            .options(joinedload(ChangeRequest.new_district), joinedload(ChangeRequest.new_region), joinedload(ChangeRequest.user))\
+            .filter(
+                ChangeRequest.target_district_id == current_user.location_id,
+                ChangeRequest.status == 'pending_data_entry'
+            )\
+            .options(joinedload(ChangeRequest.requester), joinedload(ChangeRequest.target_district), joinedload(ChangeRequest.target_region))\
             .first()
         current_app.logger.debug(f"Demande en attente de validation chargée : {pending_change}")
         
-        # Charger la demande de promotion avec sa relation
+        # Charger la demande de promotion en cours de l'utilisateur
         pending_promotion = PromotionRequest.query\
             .options(joinedload(PromotionRequest.requested_region))\
             .filter_by(user_id=current_user.id, status='pending')\
             .first()
-        current_app.logger.debug(f"pending_promotion chargé : {pending_promotion}")
+        current_app.logger.debug(f"Demande de promotion chargée : {pending_promotion}")
 
         # Déterminer l'état des étapes pour la demande initiée
         change_request_status = type('Status', (), {
@@ -87,13 +99,20 @@ def dashboard():
                           entries_data=entries_data,
                           user_location=current_user.location,
                           parent_region=current_user.location.parent if current_user.location else None,
-                          pending_change=pending_change or initiated_change,  # Afficher soit la demande initiée, soit celle en attente
+                          pending_change=pending_change or initiated_change,
                           change_request_status=change_request_status,
                           pending_promotion=pending_promotion)
 
+# Route : Faire une demande de changement de localisation
 @data_bp.route('/change-location', methods=['GET', 'POST'])
 @login_required
 def change_location():
+    """
+    Permet à un data_entry de faire une demande de changement de localisation.
+    - Étape 1 : Sélectionner une région.
+    - Étape 2 : Sélectionner un district dans cette région.
+    - Soumettre une ChangeRequest.
+    """
     check_data_entry_role()
 
     form = ChangeLocationForm()
@@ -162,61 +181,52 @@ def change_location():
 
             current_app.logger.debug(f"Données soumises dans l'étape 2 : {request.form}")
             if form.validate_on_submit():
-                new_district_id = form.district.data
-                new_district = Location.query.get_or_404(new_district_id)
+                target_district_id = form.district.data
+                target_district = Location.query.get_or_404(target_district_id)
 
-                if new_district.type == 'REG':
+                # Vérifier que la localisation choisie est un district
+                if target_district.type == 'REG':
                     flash("Erreur : Vous ne pouvez pas choisir une région comme district.", 'danger')
                     return redirect(url_for('data.change_location'))
 
-                # Vérifier si un data_entry est assigné au district
-                existing_data_entry = User.query.filter_by(location_id=new_district_id, role='data_entry').first()
-                current_data_entry_id = existing_data_entry.id if existing_data_entry and existing_data_entry.id != current_user.id else None
-
-                # Vérifier si un team_lead existe pour la région
-                team_lead = User.query.filter_by(role='team_lead', location_id=new_district.parent_id).first()
-                team_lead_id = team_lead.id if team_lead else None
-
-                if not team_lead and not current_data_entry_id:
-                    flash("Erreur : Aucun Team Lead ou Data Entry trouvé pour valider cette demande.", 'danger')
+                # Vérifier si l'utilisateur est déjà assigné à ce district
+                if target_district.id == current_user.location_id:
+                    flash("Erreur : Vous êtes déjà assigné à ce district.", 'danger')
                     return redirect(url_for('data.change_location'))
 
-                # Créer une ChangeRequest avec un statut initial
-                team_lead = User.query.filter_by(
-                    role='team_lead',
-                    location_id=new_district.parent_id
-                ).first()
+                # Vérifier si un data_entry est assigné au district cible
+                existing_data_entry = User.query.filter_by(location_id=target_district_id, role='data_entry').first()
+
+                # Vérifier si un team_lead existe pour la région cible
+                team_lead = User.query.filter_by(role='team_lead', location_id=target_district.parent_id).first()
                 if not team_lead:
-                    flash("Aucun Team Lead trouvé pour cette région", 'danger')
+                    flash("Erreur : Aucun Team Lead trouvé pour valider cette demande.", 'danger')
                     return redirect(url_for('data.change_location'))
-                
+
+                # Créer une ChangeRequest
                 request_entry = ChangeRequest(
-                    user_id=current_user.id,
-                    new_region_id=new_district.parent_id,
-                    new_district_id=new_district_id,
-                    status='pending_data_entry' if current_data_entry_id else 'pending_team_lead',
-                    requested_at=datetime.utcnow(),
-                    current_data_entry_id=current_data_entry_id,
-                    team_lead_id=team_lead.id
+                    requester_id=current_user.id,
+                    target_district_id=target_district_id,
+                    status='pending_data_entry' if existing_data_entry else 'pending_team_lead',
+                    requested_at=datetime.utcnow()
                 )
                 db.session.add(request_entry)
-            
 
-                # Ajouter une notification
-                recipient = existing_data_entry if current_data_entry_id else team_lead
+                # Ajouter une notification pour le destinataire (Data Entry ou Team Lead)
+                recipient = existing_data_entry if existing_data_entry else team_lead
                 if recipient:
                     notification = Notification(
                         user_id=recipient.id,
-                        message=f"Nouvelle demande de changement de localisation de {current_user.name} pour le district {new_district.name}.",
+                        message=f"Nouvelle demande de changement de localisation de {current_user.name} pour le district {target_district.name}.",
                         created_at=datetime.utcnow()
                     )
                     db.session.add(notification)
                 db.session.commit()
 
-                flash(f"Demande de changement de localisation pour {new_district.name} envoyée avec succès.", 'success')
+                flash(f"Demande de changement de localisation pour {target_district.name} envoyée avec succès.", 'success')
                 return redirect(url_for('data.dashboard'))
 
-            # Si la validation échoue, afficher les erreurs spécifiques
+            # Si la validation échoue, afficher les erreurs
             current_app.logger.error(f"Erreurs de validation du formulaire dans l'étape 2 : {form.errors}")
             for field, errors in form.errors.items():
                 for error in errors:
@@ -225,53 +235,57 @@ def change_location():
 
     return render_template('data_entry/change_location.html', form=form, step='region')
 
+# Route : Répondre à une demande de changement de localisation
 @data_bp.route('/respond_request/<int:request_id>', methods=['POST'])
 @login_required
 def respond_request(request_id):
-    """Handle data entry's response to change location requests"""
-    if current_user.role != 'data_entry':
-        abort(403)
+    """
+    Permet à un data_entry de répondre à une demande de changement de localisation ciblant son district.
+    - Accepter : Passe la demande au Team Lead.
+    - Rejeter : Met fin à la demande avec une raison.
+    """
+    check_data_entry_role()
 
     try:
-        # Get and validate request
+        # Charger la demande avec ses relations
         request_entry = ChangeRequest.query.options(
-            joinedload(ChangeRequest.new_district),
-            joinedload(ChangeRequest.new_region),
-            joinedload(ChangeRequest.user)
+            joinedload(ChangeRequest.requester),
+            joinedload(ChangeRequest.target_district),
+            joinedload(ChangeRequest.target_region)
         ).get_or_404(request_id)
         
+        # Vérifier que l'utilisateur actuel est le Data Entry cible et que la demande est en attente
         if (request_entry.status != 'pending_data_entry' or 
-            request_entry.current_data_entry_id != current_user.id):
+            request_entry.target_district_id != current_user.location_id):
             abort(403)
 
         action = request.form.get('action')
-        district_name = request_entry.new_district.name if request_entry.new_district else "Nouveau district"
+        district_name = request_entry.target_district.name if request_entry.target_district else "Nouveau district"
 
         if action == 'accept':
-            # Validate and process acceptance
+            # Trouver le Team Lead de la région cible
             team_lead = User.query.filter_by(
                 role='team_lead',
-                location_id=request_entry.new_region_id
+                location_id=request_entry.target_district.parent_id
             ).first()
             
             if not team_lead:
                 flash("Aucun Team Lead trouvé pour cette région", 'danger')
                 return redirect(url_for('data.dashboard'))
 
-            # Update request status
+            # Mettre à jour le statut de la demande
             request_entry.status = 'pending_team_lead'
-            request_entry.team_lead_id = team_lead.id
-            request_entry.responded_at = datetime.utcnow()
+            request_entry.data_entry_responded_at = datetime.utcnow()
             
-            # Create notifications
+            # Créer des notifications
             notifications = [
                 Notification(
                     user_id=team_lead.id,
-                    message=f"Nouvelle demande de transfert pour {district_name} de {request_entry.user.name}",
+                    message=f"Nouvelle demande de transfert pour {district_name} de {request_entry.requester.name}",
                     created_at=datetime.utcnow()
                 ),
                 Notification(
-                    user_id=request_entry.user_id,
+                    user_id=request_entry.requester_id,
                     message=f"Votre demande pour {district_name} est en attente du Team Lead",
                     created_at=datetime.utcnow()
                 )
@@ -280,18 +294,21 @@ def respond_request(request_id):
             flash("Demande transmise au Team Lead", 'success')
 
         elif action == 'reject':
-            # Handle rejection
-            reason = request.form.get('reason', 'Non spécifié').strip()
-            if not reason:
-                flash("Veuillez fournir une raison", 'danger')
+            # Vérifier la raison du rejet
+            reason = request.form.get('reason', '').strip()
+            if not reason or len(reason) < 10:
+                flash("Veuillez fournir une raison d'au moins 10 caractères", 'danger')
                 return redirect(url_for('data.dashboard'))
                 
+            # Mettre à jour le statut de la demande
             request_entry.status = 'rejected'
             request_entry.reason = reason
-            request_entry.responded_at = datetime.utcnow()
+            request_entry.data_entry_responded_at = datetime.utcnow()
+            request_entry.completed_at = datetime.utcnow()
             
+            # Notifier le demandeur
             db.session.add(Notification(
-                user_id=request_entry.user_id,
+                user_id=request_entry.requester_id,
                 message=f"Votre demande pour {district_name} a été rejetée. Raison: {reason}",
                 created_at=datetime.utcnow()
             ))
@@ -302,14 +319,17 @@ def respond_request(request_id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error in respond_request: {str(e)}", exc_info=True)
+        current_app.logger.error(f"Erreur dans respond_request: {str(e)}", exc_info=True)
         flash("Erreur lors du traitement", 'danger')
         return redirect(url_for('data.dashboard'))
-    
 
+# Route : Faire une demande de promotion
 @data_bp.route('/request-promotion', methods=['GET', 'POST'])
 @login_required
 def request_promotion():
+    """
+    Permet à un data_entry de faire une demande de promotion pour devenir Team Lead.
+    """
     check_data_entry_role()
 
     form = PromotionRequestForm()
@@ -318,11 +338,13 @@ def request_promotion():
 
     if form.validate_on_submit():
         with current_app.app_context():
+            # Vérifier si une demande de promotion est déjà en cours
             existing_request = PromotionRequest.query.filter_by(user_id=current_user.id, status='pending').first()
             if existing_request:
                 flash("Vous avez déjà une demande de promotion en attente.", 'warning')
                 return redirect(url_for('data.dashboard'))
 
+            # Créer une nouvelle demande de promotion
             promotion_request = PromotionRequest(
                 user_id=current_user.id,
                 requested_region_id=form.region.data,
@@ -336,21 +358,30 @@ def request_promotion():
 
     return render_template('data_entry/request_promotion.html', form=form)
 
+# Route : Ajouter une nouvelle entrée de données
 @data_bp.route('/new_entry', methods=['GET', 'POST'])
 @login_required
 def new_entry():
+    """
+    Permet à un data_entry d'ajouter une nouvelle entrée de données (DataEntry).
+    """
     current_app.logger.debug(f"Utilisateur {current_user.name} accède à data.new_entry")
     check_data_entry_role()
+    
     form = DataEntryForm()
     with current_app.app_context():
+        # Limiter les choix de localisation au district de l'utilisateur
         form.location.choices = [(loc.id, loc.name) for loc in Location.query.all()] if not current_user.location else [(current_user.location.id, current_user.location.name)]
 
     if form.validate_on_submit():
         current_app.logger.debug(f"Soumission du formulaire par {current_user.name}")
+        # Vérifier la cohérence des données
         if form.members.data != (form.children.data + form.men.data + form.women.data):
             flash("Le nombre total de membres doit être égal à la somme des enfants, hommes et femmes.", 'danger')
             return render_template('data_entry/new_entry.html', form=form)
+        
         with current_app.app_context():
+            # Créer une nouvelle entrée
             entry = DataEntry(
                 date=datetime.utcnow(),
                 members=form.members.data,
@@ -376,13 +407,18 @@ def new_entry():
     current_app.logger.debug("Rendu de data_entry/new_entry.html")
     return render_template('data_entry/new_entry.html', form=form)
 
+# Route : Modifier une entrée de données existante
 @data_bp.route('/edit_entry/<int:entry_id>', methods=['GET', 'POST'])
 @login_required
 def edit_entry(entry_id):
+    """
+    Permet à un data_entry de modifier une entrée de données existante (DataEntry).
+    """
     current_app.logger.debug(f"Utilisateur {current_user.name} accède à data.edit_entry pour l'entrée {entry_id}")
     check_data_entry_role()
     
     with current_app.app_context():
+        # Charger l'entrée à modifier
         entry = DataEntry.query.get_or_404(entry_id)
         if entry.user_id != current_user.id:
             abort(403)
@@ -393,11 +429,13 @@ def edit_entry(entry_id):
     
     if form.validate_on_submit():
         current_app.logger.debug(f"Soumission du formulaire d'édition par {current_user.name}")
+        # Vérifier la cohérence des données
         if form.members.data != (form.children.data + form.men.data + form.women.data):
             flash("Le nombre total de membres doit être égal à la somme des enfants, hommes et femmes.", 'danger')
             return render_template('data_entry/edit_entry.html', form=form, entry=entry)
         
         with current_app.app_context():
+            # Mettre à jour l'entrée
             entry.members = form.members.data
             entry.children = form.children.data
             entry.men = form.men.data
