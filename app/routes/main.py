@@ -120,7 +120,7 @@ def dashboard():
             
             # Demandes en attente avec joinedload
             pending_change_requests = ChangeRequest.query.options(
-                joinedload(ChangeRequest.user),
+                joinedload(ChangeRequest.requester),
                 joinedload(ChangeRequest.new_region),
                 joinedload(ChangeRequest.new_district)
             ).filter_by(status='pending').all()
