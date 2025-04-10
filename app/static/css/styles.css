@@ -1,0 +1,404 @@
+/* Palette de couleurs */
+:root {
+    --sidebar-bg: #1E3A8A; /* Bleu profond pour la sidebar */
+    --main-bg: #F1F5F9; /* Fond clair pour le contenu principal */
+    --navbar-bg: #1E3A8A; /* Bleu profond pour la navbar */
+    --accent: #10B981; /* Vert émeraude comme couleur d'accent */
+    --primary: #1E3A8A; /* Utilisé pour Équipe */
+    --secondary: #6B7280; /* Utilisé pour Performance régionale et Demandes en Attente */
+    --success: #10B981; /* Utilisé pour Districts */
+    --danger: #EF4444; /* Rouge pour les actions critiques */
+    --warning: #F59E0B; /* Utilisé pour Changement de Région */
+    --info: #3B82F6; /* Utilisé pour Titre Mensuel et Rapports */
+    --light: #F1F5F9; /* Fond clair */
+    --dark: #1F2937; /* Texte sombre */
+    --shadow: 0 6px 12px rgba(0, 0, 0, 0.1); /* Ombre plus douce */
+    --transition: all 0.3s ease;
+    --text-primary: #1F2937; /* Couleur de texte principale pour un bon contraste */
+    --text-light: #FFFFFF; /* Couleur de texte pour les fonds sombres */
+}
+
+/* Styles généraux */
+body {
+    font-family: 'Poppins', sans-serif; /* Police moderne */
+    background-color: var(--main-bg);
+    padding-top: 70px; /* Ajusté pour une navbar plus haute */
+    color: var(--text-primary);
+}
+
+/* Navbar */
+.navbar {
+    background: linear-gradient(135deg, var(--navbar-bg), #4F46E5); /* Dégradé moderne */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+}
+
+.navbar-brand {
+    font-weight: 600;
+    font-size: 1.75rem; /* Taille légèrement augmentée */
+    display: flex;
+    align-items: center;
+    color: var(--text-light);
+}
+
+.navbar-brand i {
+    margin-right: 10px;
+}
+
+.navbar-nav .nav-link {
+    color: var(--text-light);
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    transition: var(--transition);
+}
+
+.navbar-nav .nav-link:hover {
+    color: var(--accent);
+    transform: translateY(-2px);
+    display: inline-block;
+}
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    top: 70px; /* Ajusté pour la nouvelle hauteur de la navbar */
+    bottom: 0;
+    left: 0;
+    width: 260px; /* Légèrement plus large pour plus de confort */
+    z-index: 100;
+    padding: 20px 0;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(180deg, var(--sidebar-bg), #2D3748); /* Dégradé subtil */
+    border-right: none;
+    transition: var(--transition);
+}
+
+.sidebar .nav-item {
+    padding: 14px 24px; /* Plus d'espacement */
+    transition: background-color 0.3s ease;
+}
+
+.sidebar .nav-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar .nav-item.active {
+    background-color: var(--accent);
+    border-left: 4px solid var(--accent);
+}
+
+.sidebar .nav-link {
+    color: var(--text-light);
+    font-weight: 500;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    transition: var(--transition);
+}
+
+.sidebar .nav-link:hover {
+    color: var(--accent);
+}
+
+.sidebar .nav-link i {
+    width: 20px;
+    margin-right: 12px;
+    color: var(--accent);
+}
+
+.sidebar .nav-link.text-danger {
+    color: var(--danger);
+}
+
+.sidebar .nav-link.text-danger:hover {
+    color: #DC2626;
+}
+
+@media (max-width: 991px) {
+    .sidebar {
+        position: static;
+        width: 100%;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+}
+
+/* Contenu principal */
+.main-content {
+    margin-left: 260px; /* Ajusté pour la nouvelle largeur de la sidebar */
+    padding: 30px;
+}
+
+@media (max-width: 991px) {
+    .main-content {
+        margin-left: 0;
+        padding: 20px;
+    }
+}
+
+/* Messages flash */
+.alert {
+    position: relative;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    border: none;
+    font-weight: 500;
+}
+
+.alert-dismissible .btn-close {
+    position: absolute;
+    top: 1rem;
+    right: 1.25rem;
+}
+
+/* Styles pour les cartes */
+.card {
+    border: none;
+    border-radius: 12px; /* Coins plus arrondis */
+    background-color: white;
+    transition: var(--transition);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow);
+}
+
+.card-header {
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+    color: var(--text-light);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+/* Dégradés pour les en-têtes */
+.card-header.bg-primary {
+    background: linear-gradient(135deg, var(--primary), #4F46E5);
+}
+
+.card-header.bg-success {
+    background: linear-gradient(135deg, var(--success), #34D399);
+}
+
+.card-header.bg-info {
+    background: linear-gradient(135deg, var(--info), #60A5FA);
+}
+
+.card-header.bg-warning {
+    background: linear-gradient(135deg, var(--warning), #FBBF24);
+}
+
+.card-header.bg-secondary {
+    background: linear-gradient(135deg, var(--secondary), #9CA3AF);
+}
+
+/* Amélioration du contraste pour Titre Mensuel */
+.card-body.bg-info {
+    background: linear-gradient(135deg, var(--info), #60A5FA);
+    color: var(--text-light);
+    border-radius: 12px;
+}
+
+/* Styles pour les boutons */
+.btn-outline-primary {
+    border-color: var(--primary);
+    color: var(--primary);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary);
+    color: var(--text-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.btn-outline-success {
+    border-color: var(--success);
+    color: var(--success);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.btn-outline-success:hover {
+    background-color: var(--success);
+    color: var(--text-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.btn-outline-info {
+    border-color: var(--info);
+    color: var(--info);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.btn-outline-info:hover {
+    background-color: var(--info);
+    color: var(--text-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.btn-outline-warning {
+    border-color: var(--warning);
+    color: var(--warning);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.btn-outline-warning:hover {
+    background-color: var(--warning);
+    color: var(--text-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.btn-outline-secondary {
+    border-color: var(--secondary);
+    color: var(--secondary);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--secondary);
+    color: var(--text-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Style pour les résumés (ex. "Membres : X", "Districts : Y") */
+.summary-text {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Styles pour les tableaux */
+.table {
+    margin-bottom: 0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.table th {
+    background-color: var(--light);
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.table-light {
+    background-color: var(--light);
+}
+
+/* Styles pour le graphique de performance */
+#regionalPerformanceChart {
+    max-height: 200px;
+}
+
+/* Onglets (ajouté pour la nouvelle structure avec onglets) */
+.nav-tabs {
+    border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    color: var(--text-primary);
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    transition: var(--transition);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary);
+    border-bottom: 3px solid var(--primary);
+    background: transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--primary);
+}
+
+/* Autres styles */
+.list-group-item {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 0.75rem 0;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+.badge {
+    font-size: 0.9rem;
+    padding: 0.4em 0.8em;
+}
+
+/* Responsivité */
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 0;
+        padding: 15px;
+    }
+
+    .card {
+        margin-bottom: 1.5rem;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .summary-text {
+        font-size: 0.9rem;
+    }
+
+    .card-body .btn {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .navbar-brand {
+        font-size: 1.25rem;
+    }
+}
+.bg-gradient-teal {
+    background: linear-gradient(135deg, #0D9488, #2DD4BF);
+}
+
+.bg-gradient-amber {
+    background: linear-gradient(135deg, #D97706, #F59E0B);
+}
+
+.bg-gradient-cyan {
+    background: linear-gradient(135deg, #0891B2, #22D3EE);
+}
+
+/* Ajustement pour centrer verticalement la carte Titre Mensuel */
+.d-flex.align-items-center .card {
+    margin: auto;
+}
