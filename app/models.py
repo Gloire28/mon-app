@@ -104,8 +104,15 @@ class ChangeRequest(db.Model):
     
     # Relations
     requester = db.relationship('User', foreign_keys=[requester_id], backref=db.backref('change_requests_made', lazy='dynamic'))
-    target_district = db.relationship('Location', foreign_keys=[target_district_id])
-    
+    target_district = db.relationship('Location', foreign_keys=[target_district_id], backref='change_requests')
+    # Ajout d'une relation pour accéder à la région parent du district cible
+    target_region = db.relationship('Location', 
+                                     secondary='locations', 
+                                     primaryjoin='ChangeRequest.target_district_id == Location.id',
+                                     secondaryjoin='Location.parent_id == Location.id',
+                                     uselist=False,
+                                     viewonly=True)
+
     # Contraintes
     __table_args__ = (
         db.CheckConstraint(

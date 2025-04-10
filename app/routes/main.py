@@ -37,13 +37,13 @@ def dashboard():
                 db.extract('year', DataEntry.date) == datetime.now().year
             ).scalar() or 0.0
             
-            # Demandes en attente avec joinedload pour éviter les erreurs de session
+            # Demandes en attente pour le Team Lead (Spero)
             pending_requests = ChangeRequest.query.options(
-                joinedload(ChangeRequest.new_region),
-                joinedload(ChangeRequest.new_district)
+                joinedload(ChangeRequest.requester),
+                joinedload(ChangeRequest.target_district)
             ).filter(
-                ChangeRequest.new_region_id == current_user.location_id,
-                ChangeRequest.status == 'pending'
+                ChangeRequest.target_region.has(id=current_user.location_id),  # Filtrer par la région du Team Lead
+                ChangeRequest.status == 'pending_team_lead'  # Seulement les demandes en attente du Team Lead
             ).all()
             
             # Ajout pour la section "Mon District"
@@ -121,9 +121,9 @@ def dashboard():
             # Demandes en attente avec joinedload
             pending_change_requests = ChangeRequest.query.options(
                 joinedload(ChangeRequest.requester),
-                joinedload(ChangeRequest.new_region),
-                joinedload(ChangeRequest.new_district)
-            ).filter_by(status='pending').all()
+                joinedload(ChangeRequest.target_district),
+                joinedload(ChangeRequest.target_region)
+            ).filter_by(status='pending_data_entry').all()  # Changé de 'pending' à 'pending_data_entry'
             pending_promotion_requests = PromotionRequest.query.options(
                 joinedload(PromotionRequest.user),
                 joinedload(PromotionRequest.requested_region)
@@ -209,7 +209,7 @@ def validate_requests():
     if current_user.role != 'data_viewer':
         abort(403)
     with current_app.app_context():
-        pending_change_requests = ChangeRequest.query.filter_by(status='pending').all()
+        pending_change_requests = ChangeRequest.query.filter_by(status='pending_data_entry').all()
         pending_promotion_requests = PromotionRequest.query.filter_by(status='pending').all()
     if request.method == 'POST':
         request_type = request.form.get('request_type')
@@ -220,15 +220,15 @@ def validate_requests():
             if request_type == 'change':
                 req = ChangeRequest.query.get_or_404(request_id)
                 if action == 'validate':
-                    user = req.user
-                    user.location_id = req.new_district_id
+                    user = req.requester  # Changé de req.user à req.requester
+                    user.location_id = req.target_district_id
                     req.status = 'accepted'
                     req.responded_at = datetime.utcnow()
                     flash(f"Changement de localisation validé pour {user.name}.", 'success')
                 elif action == 'reject':
                     req.status = 'rejected'
                     req.responded_at = datetime.utcnow()
-                    flash(f"Changement de localisation refusé pour {req.user.name}.", 'info')
+                    flash(f"Changement de localisation refusé pour {req.requester.name}.", 'info')
             elif request_type == 'promotion':
                 req = PromotionRequest.query.get_or_404(request_id)
                 if action == 'validate':
