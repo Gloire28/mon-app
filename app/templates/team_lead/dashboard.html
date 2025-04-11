@@ -11,7 +11,7 @@
             <div class="card shadow-sm border-0 rounded text-center bg-gradient-teal text-white">
                 <div class="card-body">
                     <h5 class="card-title"><i class="fas fa-money-bill-wave me-2"></i>Titre Mensuel (Budget)</h5>
-                    <p class="h3">{{ monthly_tite|round(2)|format_number }} FCFA</p>
+                    <p class="h3">{{ metrics.monthly_tite|round(2)|format_number }} FCFA</p>
                 </div>
             </div>
         </div>
@@ -65,7 +65,7 @@
                                     <td>{{ request.user.name }}</td>
                                     <td>{{ request.new_region.name }}</td>
                                     <td>{{ request.new_district.name if request.new_district else 'N/A' }}</td>
-                                    <td>{{ request.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    <td>{{ request.requested_at.strftime('%d/%m/%Y %H:%M') }}</td>
                                     <td>
                                         <a href="{{ url_for('team_lead.respond_request', request_id=request.id) }}" 
                                            class="btn btn-sm btn-primary btn-action" 
@@ -116,7 +116,7 @@
                     <!-- Onglet Districts -->
                     <div class="tab-pane fade" id="districts" role="tabpanel" aria-labelledby="districts-tab">
                         <div class="d-flex justify-content-between mb-3">
-                            <span class="summary-text text-muted">Districts : {{ districts_count }}</span>
+                            <span class="summary-text text-muted">Districts : {{ metrics.districts_count }}</span>
                         </div>
                         <a href="{{ url_for('team_lead.manage_districts') }}" class="btn btn-outline-success w-100 mb-2 btn-action" data-bs-toggle="tooltip" title="Gérer les districts de votre région" aria-label="Gérer les districts">
                             <i class="fas fa-map me-2"></i>Gérer les Districts
@@ -180,6 +180,11 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 {% endblock %}
 
 {% block scripts %}

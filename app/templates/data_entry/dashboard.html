@@ -80,15 +80,15 @@
                             {% if pending_change %}
                                 <p class="mb-2">Demande pour : 
                                     <strong>
-                                        {% if pending_change.new_district %}
-                                            {{ pending_change.new_district.name }}
+                                        {% if pending_change.target_district %}
+                                            {{ pending_change.target_district.name }}
                                         {% else %}
                                             District inconnu
                                         {% endif %}
                                     </strong> 
                                     (Région : 
-                                    {% if pending_change.new_region %}
-                                        {{ pending_change.new_region.name }}
+                                    {% if pending_change.target_region %}
+                                        {{ pending_change.target_region.name }}
                                     {% else %}
                                         Région inconnue
                                     {% endif %})
@@ -121,7 +121,7 @@
                                     <p class="mt-2 mb-0">Validation Team Lead</p>
                                 </div>
                             </div>
-                            {% if pending_change.status == 'pending_data_entry' and pending_change.current_data_entry_id == current_user.id %}
+                            {% if pending_change.status == 'pending_data_entry' and pending_change.target_district_id == current_user.location_id %}
                                 <form method="POST" action="{{ url_for('data.respond_request', request_id=pending_change.id) }}" class="mt-3">
                                     <input type="hidden" name="action" value="accept">
                                     <button type="submit" class="btn btn-success me-2">Accepter</button>
@@ -178,6 +178,11 @@
         </main>
     </div>
 </div>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 {% endblock %}
 
 {% block scripts %}

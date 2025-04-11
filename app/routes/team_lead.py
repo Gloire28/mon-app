@@ -458,7 +458,6 @@ def dashboard():
 
         # Get pending change requests
         pending_requests = ChangeRequest.query.filter(
-            ChangeRequest.team_lead_id == current_user.id,
             ChangeRequest.status == 'pending_team_lead',
             ChangeRequest.new_region_id == current_user.location_id
         ).options(
