@@ -28,11 +28,7 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
     
     # Configuration spécifique pour GitHub Actions (CI)
-    if os.environ.get('GITHUB_ACTIONS') == 'true':
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////home/runner/work/mon-app/mon-app/instance/test.db'
-        app.logger.info("Mode CI GitHub Actions détecté - Configuration spéciale appliquée")
-    else:
-        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     # Initialisation dynamique de la configuration
     config_class.init_app(app)

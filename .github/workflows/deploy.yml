@@ -8,44 +8,65 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: optimizer_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      
-      - name: Prepare environment
-        env:
-          DATABASE_URI: sqlite:///${{ github.workspace }}/instance/your_database.db
-        run: |
-          mkdir -p ${{ github.workspace }}/instance
-          touch ${{ github.workspace }}/instance/your_database.db
-          chmod 644 ${{ github.workspace }}/instance/your_database.db
-          echo "SQLALCHEMY_DATABASE_URI=$DATABASE_URI" > .env
-          echo "FLASK_APP=run.py" >> .env
-          echo "FLASK_ENV=production" >> .env
-      
+
       - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/optimizer_db
+          FLASK_APP: run.py
+          FLASK_ENV: production
         run: |
           flask db init || true  # Ignore si le dossier migrations existe déjà
           flask db upgrade
-      
+
       - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/optimizer_db
+          FLASK_APP: run.py
+          FLASK_ENV: production
         run: |
-          pytest tests/ -v || true  # Continue même si les tests échouent (à ajuster si obligatoire)
-      
+          pytest tests/ -v
+
       - name: Run application
         env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/optimizer_db
+          FLASK_APP: run.py
+          FLASK_ENV: production
           PORT: 7007
         run: |
           gunicorn --bind 0.0.0.0:$PORT run:app &
           sleep 5  # Attendre que l'application démarre
           curl http://localhost:$PORT || true  # Vérifier si l'application répond
+
+      - name: Trigger Render deployment
+        if: success()  # N'exécuter que si les étapes précédentes ont réussi
+        run: |
+          curl -X POST https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
