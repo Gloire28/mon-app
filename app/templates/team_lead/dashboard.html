@@ -65,6 +65,7 @@
                                     <td>{{ request.requester.name }}</td>
                                     <td>{{ request.target_region.name if request.target_region else 'N/A' }}</td>
                                     <td>{{ request.target_district.name }}</td>
+                                    <td>{{ request.get_status_display() }}</td>
                                     <td>{{ request.requested_at.strftime('%d/%m/%Y %H:%M') }}</td>
                                     <td>
                                         <a href="{{ url_for('team_lead.respond_request', request_id=request.id) }}" 
