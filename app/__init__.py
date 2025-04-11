@@ -83,7 +83,7 @@ def create_app(config_class=Config):
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
-    app.register_blueprint(team_lead_bp)
+    app.register_blueprint(team_lead_bp, url_prefix='/team_lead')
     app.register_blueprint(data_bp)
     app.register_blueprint(data_viewer_bp)
     

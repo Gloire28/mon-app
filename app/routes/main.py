@@ -24,29 +24,53 @@ def dashboard():
 
     elif current_user.role == 'team_lead':
         with current_app.app_context():
-            # Statistiques de l'équipe
-            team_members_count = User.query.filter_by(role='member', location_id=current_user.location_id).count()
+            # Validate region assignment
+            if not current_user.location or current_user.location.type != 'REG':
+                flash("Aucune région valide attribuée", 'danger')
+                return render_template(
+                    'team_lead/dashboard.html',
+                    user_location=None,
+                    metrics={'districts_count': 0, 'monthly_tite': 0.0, 'team_members': 0, 'pending_requests_count': 0},
+                    pending_requests=[]
+                )
+
+            # Get districts under this region
+            districts = Location.query.filter_by(parent_id=current_user.location_id, type='DIS').all()
+            district_ids = [d.id for d in districts]
+
+            # Calculate metrics
+            team_members_count = User.query.filter(
+                User.role == 'data_entry',
+                User.location_id.in_(district_ids)
+            ).count()
             
-            # Districts sous la région du team lead
-            districts_count = Location.query.filter_by(parent_id=current_user.location_id, type='DIS').count()
+            districts_count = len(districts)
             
-            # Calcul du TITE mensuel
-            monthly_tite = db.session.query(db.func.sum(DataEntry.tite)).filter(
-                DataEntry.location.has(parent_id=current_user.location_id),
-                db.extract('month', DataEntry.date) == datetime.now().month,
-                db.extract('year', DataEntry.date) == datetime.now().year
+            current_month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            monthly_tite = db.session.query(db.func.sum(DataEntry.tite)).join(Location).filter(
+                Location.parent_id == current_user.location_id,
+                DataEntry.date >= current_month_start
             ).scalar() or 0.0
             
-            # Demandes en attente pour le Team Lead (Spero)
+            # Get pending change requests
             pending_requests = ChangeRequest.query.options(
                 joinedload(ChangeRequest.requester),
-                joinedload(ChangeRequest.target_district)
+                joinedload(ChangeRequest.target_district),
+                joinedload(ChangeRequest.target_region)
             ).filter(
-                ChangeRequest.target_region.has(id=current_user.location_id),  # Filtrer par la région du Team Lead
-                ChangeRequest.status == 'pending_team_lead'  # Seulement les demandes en attente du Team Lead
+                ChangeRequest.status == 'pending_team_lead',
+                ChangeRequest.target_district_id.in_(district_ids)
             ).all()
+
+            # Group metrics into a dictionary
+            metrics = {
+                'districts_count': districts_count,
+                'team_members': team_members_count,
+                'monthly_tite': monthly_tite,
+                'pending_requests_count': len(pending_requests)
+            }
             
-            # Ajout pour la section "Mon District"
+            # Section "Mon District"
             form = DataEntryForm()
             form.load_locations(user_location_id=current_user.location_id)
             district_entries = DataEntry.query.filter_by(user_id=current_user.id).order_by(DataEntry.date.desc()).limit(10).all()
@@ -61,9 +85,8 @@ def dashboard():
         
         return render_template(
             'team_lead/dashboard.html',
-            team_members_count=team_members_count,
-            districts_count=districts_count,
-            monthly_tite=monthly_tite,
+            user_location=current_user.location,
+            metrics=metrics,
             pending_requests=pending_requests,
             form=form,
             district_entries=district_entries,
@@ -103,14 +126,12 @@ def dashboard():
                     monthly_totals[month_idx] += entry.members
                 monthly_data[region.id] = monthly_totals
             
-            # Rapports récents des Team Leads avec joinedload
             team_lead_reports = TeamReport.query.options(
                 joinedload(TeamReport.team_lead)
             ).join(User, TeamReport.team_lead_id == User.id).filter(
                 User.role == 'team_lead'
             ).order_by(TeamReport.created_at.desc()).limit(10).all()
             
-            # Entrées récentes des Data Entries avec joinedload
             data_entry_entries = DataEntry.query.options(
                 joinedload(DataEntry.user),
                 joinedload(DataEntry.location)
@@ -118,12 +139,11 @@ def dashboard():
                 User.role == 'data_entry'
             ).order_by(DataEntry.date.desc()).limit(10).all()
             
-            # Demandes en attente avec joinedload
             pending_change_requests = ChangeRequest.query.options(
                 joinedload(ChangeRequest.requester),
                 joinedload(ChangeRequest.target_district),
                 joinedload(ChangeRequest.target_region)
-            ).filter_by(status='pending_data_entry').all()  # Changé de 'pending' à 'pending_data_entry'
+            ).filter_by(status='pending_data_entry').all()
             pending_promotion_requests = PromotionRequest.query.options(
                 joinedload(PromotionRequest.user),
                 joinedload(PromotionRequest.requested_region)

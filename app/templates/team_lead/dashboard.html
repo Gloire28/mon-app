@@ -53,8 +53,8 @@
                             <thead>
                                 <tr>
                                     <th>Membre</th>
-                                    <th>Nouvelle Région</th>
-                                    <th>Nouveau District</th>
+                                    <th>Région Cible</th>
+                                    <th>District Cible</th>
                                     <th>Date de la demande</th>
                                     <th>Actions</th>
                                 </tr>
@@ -62,9 +62,9 @@
                             <tbody>
                                 {% for request in pending_requests %}
                                 <tr>
-                                    <td>{{ request.user.name }}</td>
-                                    <td>{{ request.new_region.name }}</td>
-                                    <td>{{ request.new_district.name if request.new_district else 'N/A' }}</td>
+                                    <td>{{ request.requester.name }}</td>
+                                    <td>{{ request.target_region.name if request.target_region else 'N/A' }}</td>
+                                    <td>{{ request.target_district.name }}</td>
                                     <td>{{ request.requested_at.strftime('%d/%m/%Y %H:%M') }}</td>
                                     <td>
                                         <a href="{{ url_for('team_lead.respond_request', request_id=request.id) }}" 
@@ -142,7 +142,6 @@
                     <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Performance régionale</h5>
                 </div>
                 <div class="card-body text-center">
-                    <!-- Graphique en barres (Chart.js) -->
                     <canvas id="performanceChart" height="150"></canvas>
                     <a href="{{ url_for('team_lead.performance_report') }}" class="btn btn-outline-secondary w-100 mt-3 btn-action" aria-label="Voir les détails de la performance régionale">
                         <i class="fas fa-eye me-2"></i>Voir les détails
@@ -190,7 +189,6 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-<!-- Inclure Chart.js pour le graphique -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Activer les tooltips Bootstrap
@@ -231,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             plugins: {
                 legend: {
-                    display: false // Pas besoin de légende pour un seul dataset
+                    display: false
                 }
             }
         }
