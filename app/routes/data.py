@@ -104,15 +104,9 @@ def dashboard():
                           pending_promotion=pending_promotion)
 
 # Route : Faire une demande de changement de localisation
-@data_bp.route('/change-location', methods=['GET', 'POST'])
+@data_bp.route('/change_location', methods=['GET', 'POST'])
 @login_required
 def change_location():
-    """
-    Permet à un data_entry de faire une demande de changement de localisation.
-    - Étape 1 : Sélectionner une région.
-    - Étape 2 : Sélectionner un district dans cette région.
-    - Soumettre une ChangeRequest.
-    """
     check_data_entry_role()
 
     form = ChangeLocationForm()
@@ -139,7 +133,6 @@ def change_location():
             flash("Erreur : Région invalide.", 'danger')
             return render_template('data_entry/change_location.html', form=form, step='region')
 
-        # Vérifier que region_id est dans les choices
         if region_id not in [choice[0] for choice in form.region.choices]:
             current_app.logger.error(f"region_id {region_id} non trouvé dans les choices : {form.region.choices}")
             flash("Erreur : Région sélectionnée invalide.", 'danger')
@@ -157,7 +150,6 @@ def change_location():
     # Étape 2 : Soumission finale (après choix du district)
     if request.method == 'POST' and 'district' in request.form:
         with current_app.app_context():
-            # Charger les choices pour region et district
             form.load_regions()
             region_id = request.form.get('region_id')
             if not region_id:
@@ -184,12 +176,10 @@ def change_location():
                 target_district_id = form.district.data
                 target_district = Location.query.get_or_404(target_district_id)
 
-                # Vérifier que la localisation choisie est un district
                 if target_district.type == 'REG':
                     flash("Erreur : Vous ne pouvez pas choisir une région comme district.", 'danger')
                     return redirect(url_for('data.change_location'))
 
-                # Vérifier si l'utilisateur est déjà assigné à ce district
                 if target_district.id == current_user.location_id:
                     flash("Erreur : Vous êtes déjà assigné à ce district.", 'danger')
                     return redirect(url_for('data.change_location'))
@@ -203,31 +193,39 @@ def change_location():
                     flash("Erreur : Aucun Team Lead trouvé pour valider cette demande.", 'danger')
                     return redirect(url_for('data.change_location'))
 
+                # Vérifier si c'est un échange
+                is_exchange = request.form.get('is_exchange') == 'on'
+                exchange_with_user_id = None
+                if is_exchange and existing_data_entry:
+                    exchange_with_user_id = existing_data_entry.id
+
                 # Créer une ChangeRequest
                 request_entry = ChangeRequest(
                     requester_id=current_user.id,
                     target_district_id=target_district_id,
+                    exchange_with_user_id=exchange_with_user_id,
                     status='pending_data_entry' if existing_data_entry else 'pending_team_lead',
                     requested_at=datetime.utcnow()
                 )
                 db.session.add(request_entry)
 
-                # Ajouter une notification pour le destinataire (Data Entry ou Team Lead)
+                # Ajouter une notification pour le destinataire
                 recipient = existing_data_entry if existing_data_entry else team_lead
                 if recipient:
+                    message = (f"Nouvelle demande d'échange de localisation avec {current_user.name} pour le district {target_district.name}."
+                              if is_exchange else
+                              f"Nouvelle demande de changement de localisation de {current_user.name} pour le district {target_district.name}.")
                     notification = Notification(
                         user_id=recipient.id,
-                        message=f"Nouvelle demande de changement de localisation de {current_user.name} pour le district {target_district.name}.",
+                        message=message,
                         created_at=datetime.utcnow()
                     )
                     db.session.add(notification)
                 db.session.commit()
 
-                flash(f"Demande de changement de localisation pour {target_district.name} envoyée avec succès.", 'success')
+                flash(f"Demande de {'échange' if is_exchange else 'changement'} de localisation pour {target_district.name} envoyée avec succès.", 'success')
                 return redirect(url_for('data.dashboard'))
 
-            # Si la validation échoue, afficher les erreurs
-            current_app.logger.error(f"Erreurs de validation du formulaire dans l'étape 2 : {form.errors}")
             for field, errors in form.errors.items():
                 for error in errors:
                     flash(f"Erreur dans le champ {field} : {error}", 'danger')
@@ -239,22 +237,16 @@ def change_location():
 @data_bp.route('/respond_request/<int:request_id>', methods=['POST'])
 @login_required
 def respond_request(request_id):
-    """
-    Permet à un data_entry de répondre à une demande de changement de localisation ciblant son district.
-    - Accepter : Passe la demande au Team Lead.
-    - Rejeter : Met fin à la demande avec une raison.
-    """
     check_data_entry_role()
 
     try:
-        # Charger la demande avec ses relations
         request_entry = ChangeRequest.query.options(
             joinedload(ChangeRequest.requester),
             joinedload(ChangeRequest.target_district),
-            joinedload(ChangeRequest.target_region)
+            joinedload(ChangeRequest.target_region),
+            joinedload(ChangeRequest.exchange_with)
         ).get_or_404(request_id)
         
-        # Vérifier que l'utilisateur actuel est le Data Entry cible et que la demande est en attente
         if (request_entry.status != 'pending_data_entry' or 
             request_entry.target_district_id != current_user.location_id):
             abort(403)
@@ -263,7 +255,6 @@ def respond_request(request_id):
         district_name = request_entry.target_district.name if request_entry.target_district else "Nouveau district"
 
         if action == 'accept':
-            # Trouver le Team Lead de la région cible
             team_lead = User.query.filter_by(
                 role='team_lead',
                 location_id=request_entry.target_district.parent_id
@@ -273,20 +264,20 @@ def respond_request(request_id):
                 flash("Aucun Team Lead trouvé pour cette région", 'danger')
                 return redirect(url_for('data.dashboard'))
 
-            # Mettre à jour le statut de la demande
             request_entry.status = 'pending_team_lead'
             request_entry.data_entry_responded_at = datetime.utcnow()
             
-            # Créer des notifications
+            # Notifications
+            message_prefix = "d'échange" if request_entry.exchange_with_user_id else "de transfert"
             notifications = [
                 Notification(
                     user_id=team_lead.id,
-                    message=f"Nouvelle demande de transfert pour {district_name} de {request_entry.requester.name}",
+                    message=f"Nouvelle demande {message_prefix} pour {district_name} de {request_entry.requester.name}",
                     created_at=datetime.utcnow()
                 ),
                 Notification(
                     user_id=request_entry.requester_id,
-                    message=f"Votre demande pour {district_name} est en attente du Team Lead",
+                    message=f"Votre demande {message_prefix} pour {district_name} est en attente du Team Lead",
                     created_at=datetime.utcnow()
                 )
             ]
@@ -294,19 +285,16 @@ def respond_request(request_id):
             flash("Demande transmise au Team Lead", 'success')
 
         elif action == 'reject':
-            # Vérifier la raison du rejet
             reason = request.form.get('reason', '').strip()
             if not reason or len(reason) < 10:
                 flash("Veuillez fournir une raison d'au moins 10 caractères", 'danger')
                 return redirect(url_for('data.dashboard'))
                 
-            # Mettre à jour le statut de la demande
             request_entry.status = 'rejected'
             request_entry.reason = reason
             request_entry.data_entry_responded_at = datetime.utcnow()
             request_entry.completed_at = datetime.utcnow()
             
-            # Notifier le demandeur
             db.session.add(Notification(
                 user_id=request_entry.requester_id,
                 message=f"Votre demande pour {district_name} a été rejetée. Raison: {reason}",

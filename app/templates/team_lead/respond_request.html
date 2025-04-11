@@ -19,7 +19,13 @@
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-secondary text-white">
-            <h5 class="mb-0">Demande de {{ request.user.name }}</h5>
+            <h5 class="mb-0">
+                {% if request.exchange_with %}
+                    Demande d'échange entre {{ request.requester.name }} et {{ request.exchange_with.name }}
+                {% else %}
+                    Demande de {{ request.requester.name }}
+                {% endif %}
+            </h5>
         </div>
         <div class="card-body">
             <p><strong>Région demandée:</strong> {{ request.target_region.name if request.target_region else 'N/A' }}</p>

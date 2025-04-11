@@ -29,13 +29,15 @@
     {% if step == 'district' %}
         <form method="POST">
             {{ form.hidden_tag() }}
-            <!-- Champ caché pour region -->
             {{ form.region(hidden=True) }}
-            <!-- Champ caché pour region_id (pour référence) -->
             <input type="hidden" name="region_id" value="{{ region_id }}">
             <div class="mb-3">
                 <label for="district" class="form-label">Choisir un district</label>
                 {{ form.district(class="form-control") }}
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="is_exchange" name="is_exchange">
+                <label class="form-check-label" for="is_exchange">Échanger avec un autre Data Entry</label>
             </div>
             {{ form.submit(class="btn btn-primary") }}
         </form>

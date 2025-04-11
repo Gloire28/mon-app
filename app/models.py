@@ -88,15 +88,12 @@ class ChangeRequest(db.Model):
     __tablename__ = 'change_requests'
     
     id = db.Column(db.Integer, primary_key=True)
-    # L'utilisateur qui fait la demande (Juste)
     requester_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    # Le district cible demandé (Cotonou)
     target_district_id = db.Column(db.Integer, db.ForeignKey('locations.id'), nullable=False)
-    # Statut de la demande avec un workflow clair
+    # Ajout pour l'échange
+    exchange_with_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     status = db.Column(db.String(20), default='pending_data_entry', nullable=False)
-    # Raison du rejet (optionnel)
     reason = db.Column(db.String(200), nullable=True)
-    # Timestamps pour suivre le processus
     requested_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     data_entry_responded_at = db.Column(db.DateTime, nullable=True)
     team_lead_responded_at = db.Column(db.DateTime, nullable=True)
@@ -105,13 +102,15 @@ class ChangeRequest(db.Model):
     # Relations
     requester = db.relationship('User', foreign_keys=[requester_id], backref=db.backref('change_requests_made', lazy='dynamic'))
     target_district = db.relationship('Location', foreign_keys=[target_district_id], backref='change_requests')
-    # Ajout d'une relation pour accéder à la région parent du district cible
+    # Relation corrigée pour target_region
     target_region = db.relationship('Location', 
-                                     secondary='locations', 
-                                     primaryjoin='ChangeRequest.target_district_id == Location.id',
-                                     secondaryjoin='Location.parent_id == Location.id',
-                                     uselist=False,
-                                     viewonly=True)
+                                    foreign_keys=[target_district_id],
+                                    primaryjoin='ChangeRequest.target_district_id == Location.id',
+                                    secondaryjoin='Location.parent_id == Location.id',
+                                    backref='child_change_requests',
+                                    uselist=False)
+    # Relation pour l'utilisateur avec qui échanger
+    exchange_with = db.relationship('User', foreign_keys=[exchange_with_user_id], backref='exchange_requests')
 
     # Contraintes
     __table_args__ = (
@@ -169,7 +168,7 @@ class ChangeRequest(db.Model):
     def approve_by_team_lead(self):
         """Approuver la demande par le Team Lead de la région cible (Spero)"""
         if self.status != 'pending_team_lead':
-            raise ValueError("La demande doit être en attente de validation par le Team Lead.")
+            raise ValueError("La demande doit être en attesa de validation par le Team Lead.")
         
         # Vérifier le district cible
         district = db.session.get(Location, self.target_district_id)
@@ -178,7 +177,22 @@ class ChangeRequest(db.Model):
         
         # Mettre à jour la localisation du demandeur (Juste)
         requester = db.session.get(User, self.requester_id)
-        requester.location_id = self.target_district_id
+        original_district_id = requester.location_id  # District d'origine de Juste
+        
+        # Si c'est un échange
+        if self.exchange_with_user_id:
+            exchange_user = db.session.get(User, self.exchange_with_user_id)
+            if exchange_user:
+                # Échanger les districts
+                exchange_user.location_id = original_district_id  # DATA2 va dans le district de DATA1
+                requester.location_id = self.target_district_id  # DATA1 va dans le district de DATA2
+                current_app.logger.info(f"Échange effectué : {requester.name} <-> {exchange_user.name}")
+            else:
+                raise ValueError("Utilisateur pour l'échange introuvable.")
+        else:
+            # Changement simple
+            requester.location_id = self.target_district_id
+        
         self.status = 'accepted'
         self.team_lead_responded_at = datetime.utcnow()
         self.completed_at = datetime.utcnow()

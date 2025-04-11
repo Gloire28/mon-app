@@ -41,8 +41,16 @@ def respond_request(request_id):
         flash("Accès non autorisé.", 'danger')
         return redirect(url_for('main.index'))
 
-    request_entry = ChangeRequest.query.get_or_404(request_id)
-    if request_entry.status != 'pending_team_lead' or request_entry.new_region_id != current_user.location_id:
+    # Charger la demande avec ses relations
+    request_entry = ChangeRequest.query.options(
+        joinedload(ChangeRequest.requester),
+        joinedload(ChangeRequest.target_district),
+        joinedload(ChangeRequest.target_region)
+    ).get_or_404(request_id)
+
+    # Vérifier que la demande est valide pour ce Team Lead
+    if (request_entry.status != 'pending_team_lead' or 
+        request_entry.target_district.parent_id != current_user.location_id):
         current_app.logger.error(f"Demande {request_id} non valide pour team_lead {current_user.name}")
         flash("Demande non valide ou non autorisée.", 'danger')
         return redirect(url_for('team_lead.dashboard'))
@@ -51,14 +59,15 @@ def respond_request(request_id):
         action = request.form.get('action')
         current_app.logger.debug(f"Action reçue : {action}")
 
-        district_name = request_entry.new_district.name if request_entry.new_district else "Aucun district spécifié"
+        district_name = request_entry.target_district.name if request_entry.target_district else "Aucun district spécifié"
 
         if action == 'accept':
             request_entry.status = 'accepted'
             request_entry.team_lead_id = current_user.id
-            request_entry.responded_at = datetime.utcnow()
+            request_entry.team_lead_responded_at = datetime.utcnow()
+            request_entry.completed_at = datetime.utcnow()
             notification = Notification(
-                user_id=request_entry.user_id,
+                user_id=request_entry.requester_id,
                 message=f"Votre demande de changement de localisation pour {district_name} a été acceptée par le Team Lead.",
                 created_at=datetime.utcnow()
             )
@@ -71,10 +80,11 @@ def respond_request(request_id):
                 return redirect(url_for('team_lead.dashboard'))
             request_entry.status = 'rejected'
             request_entry.team_lead_id = current_user.id
-            request_entry.responded_at = datetime.utcnow()
+            request_entry.team_lead_responded_at = datetime.utcnow()
+            request_entry.completed_at = datetime.utcnow()
             request_entry.reason = reason
             notification = Notification(
-                user_id=request_entry.user_id,
+                user_id=request_entry.requester_id,
                 message=f"Votre demande de changement de localisation pour {district_name} a été rejetée par le Team Lead. Raison : {reason}.",
                 created_at=datetime.utcnow()
             )
@@ -86,6 +96,7 @@ def respond_request(request_id):
         return redirect(url_for('team_lead.dashboard'))
 
     return render_template('team_lead/respond_request.html', request=request_entry)
+
 
 # Routes pour la gestion des membres
 @team_lead_bp.route('/manage_members', methods=['GET', 'POST'])
