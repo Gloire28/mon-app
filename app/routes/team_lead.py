@@ -13,6 +13,7 @@ from weasyprint import HTML
 from io import BytesIO
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
+from dateutil.relativedelta import relativedelta
 
 team_lead_bp = Blueprint('team_lead', __name__, template_folder='templates')
 
@@ -443,15 +444,17 @@ def dashboard():
     user_location = current_user.location
     if not user_location or user_location.type != 'REG':
         flash("Aucune région valide attribuée", 'danger')
-        return render_template('team_lead/dashboard.html',
-                            user_location=None,
-                            metrics={},
-                            pending_requests=[])
+        return render_template(
+            'team_lead/dashboard.html',
+            user_location=None,
+            metrics={'districts_count': 0, 'monthly_tite': 0.0, 'team_members': 0, 'pending_requests_count': 0},
+            pending_requests=[]
+        )
 
     try:
         # Get districts under this region
         districts = Location.query.filter_by(
-            parent_id=user_location.id, 
+            parent_id=user_location.id,
             type='DIS'
         ).all()
         district_ids = [d.id for d in districts]
@@ -459,28 +462,26 @@ def dashboard():
         # Get pending change requests
         pending_requests = ChangeRequest.query.filter(
             ChangeRequest.status == 'pending_team_lead',
-            ChangeRequest.new_region_id == current_user.location_id
+            ChangeRequest.target_district_id.in_(district_ids)
         ).options(
-            joinedload(ChangeRequest.new_district),
-            joinedload(ChangeRequest.new_region),
-            joinedload(ChangeRequest.user)
+            joinedload(ChangeRequest.requester),
+            joinedload(ChangeRequest.target_district),
+            joinedload(ChangeRequest.target_region)
         ).all()
 
         # Calculate team metrics
-        one_month_ago = datetime.utcnow() - timedelta(days=30)
+        current_month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         metrics = {
             'districts_count': len(districts),
             'team_members': User.query.filter(
                 User.role == 'data_entry',
                 User.location_id.in_(district_ids)
             ).count(),
-            'monthly_tite': db.session.query(func.sum(DataEntry.tite))
-                .join(User, DataEntry.user_id == User.id)
-                .filter(
-                    User.role == 'data_entry',
-                    User.location_id.in_(district_ids),
-                    DataEntry.date >= one_month_ago
-                ).scalar() or 0.0,
+            'monthly_tite': db.session.query(func.sum(DataEntry.tite)).join(User, DataEntry.user_id == User.id).filter(
+                User.role == 'data_entry',
+                User.location_id.in_(district_ids),
+                DataEntry.date >= current_month_start
+            ).scalar() or 0.0,
             'pending_requests_count': len(pending_requests)
         }
 
@@ -497,6 +498,6 @@ def dashboard():
         return render_template(
             'team_lead/dashboard.html',
             user_location=user_location,
-            metrics={},
+            metrics={'districts_count': 0, 'monthly_tite': 0.0, 'team_members': 0, 'pending_requests_count': 0},
             pending_requests=[]
         )

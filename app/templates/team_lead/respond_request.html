@@ -22,8 +22,8 @@
             <h5 class="mb-0">Demande de {{ request.user.name }}</h5>
         </div>
         <div class="card-body">
-            <p><strong>Région demandée:</strong> {{ request.new_region.name }}</p>
-            <p><strong>District demandé:</strong> {{ request.new_district.name if request.new_district else 'N/A' }}</p>
+            <p><strong>Région demandée:</strong> {{ request.target_region.name if request.target_region else 'N/A' }}</p>
+            <p><strong>District demandé:</strong> {{ request.target_district.name }}</p>
             
             <form method="POST" class="mb-3">
                 <input type="hidden" name="action" value="accept">
