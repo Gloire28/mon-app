@@ -90,7 +90,6 @@ class ChangeRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     requester_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     target_district_id = db.Column(db.Integer, db.ForeignKey('locations.id'), nullable=False)
-    # Ajout pour l'échange
     exchange_with_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     status = db.Column(db.String(20), default='pending_data_entry', nullable=False)
     reason = db.Column(db.String(200), nullable=True)
@@ -102,15 +101,12 @@ class ChangeRequest(db.Model):
     # Relations
     requester = db.relationship('User', foreign_keys=[requester_id], backref=db.backref('change_requests_made', lazy='dynamic'))
     target_district = db.relationship('Location', foreign_keys=[target_district_id], backref='change_requests')
-    # Relation corrigée pour target_region
-    target_region = db.relationship('Location', 
-                                    foreign_keys=[target_district_id],
-                                    primaryjoin='ChangeRequest.target_district_id == Location.id',
-                                    secondaryjoin='Location.parent_id == Location.id',
-                                    backref='child_change_requests',
-                                    uselist=False)
-    # Relation pour l'utilisateur avec qui échanger
     exchange_with = db.relationship('User', foreign_keys=[exchange_with_user_id], backref='exchange_requests')
+
+    # Propriété pour accéder à la région parent du district cible
+    @property
+    def target_region(self):
+        return self.target_district.parent if self.target_district else None
 
     # Contraintes
     __table_args__ = (
@@ -138,12 +134,10 @@ class ChangeRequest(db.Model):
         if self.status != 'pending_data_entry':
             raise ValueError("La demande doit être en attente de validation par le Data Entry.")
         
-        # Vérifier que le district cible existe et obtenir sa région
         district = db.session.get(Location, self.target_district_id)
         if not district or district.type != 'DIS':
             raise ValueError("Le district cible est invalide.")
         
-        # Passer à l'étape suivante : validation par le Team Lead
         self.status = 'pending_team_lead'
         self.data_entry_responded_at = datetime.utcnow()
         db.session.commit()
@@ -168,29 +162,24 @@ class ChangeRequest(db.Model):
     def approve_by_team_lead(self):
         """Approuver la demande par le Team Lead de la région cible (Spero)"""
         if self.status != 'pending_team_lead':
-            raise ValueError("La demande doit être en attesa de validation par le Team Lead.")
+            raise ValueError("La demande doit être en attente de validation par le Team Lead.")
         
-        # Vérifier le district cible
         district = db.session.get(Location, self.target_district_id)
         if not district or district.type != 'DIS':
             raise ValueError("Le district cible est invalide.")
         
-        # Mettre à jour la localisation du demandeur (Juste)
         requester = db.session.get(User, self.requester_id)
-        original_district_id = requester.location_id  # District d'origine de Juste
+        original_district_id = requester.location_id
         
-        # Si c'est un échange
         if self.exchange_with_user_id:
             exchange_user = db.session.get(User, self.exchange_with_user_id)
             if exchange_user:
-                # Échanger les districts
-                exchange_user.location_id = original_district_id  # DATA2 va dans le district de DATA1
-                requester.location_id = self.target_district_id  # DATA1 va dans le district de DATA2
+                exchange_user.location_id = original_district_id
+                requester.location_id = self.target_district_id
                 current_app.logger.info(f"Échange effectué : {requester.name} <-> {exchange_user.name}")
             else:
                 raise ValueError("Utilisateur pour l'échange introuvable.")
         else:
-            # Changement simple
             requester.location_id = self.target_district_id
         
         self.status = 'accepted'
