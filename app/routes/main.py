@@ -452,33 +452,35 @@ def export_data_entries():
                 DataEntry.date <= interval_end
             ).order_by(DataEntry.date.desc()).limit(10).all()
 
-            # Préparer le fichier CSV
+            # Préparer le fichier CSV avec encodage UTF-8
             si = StringIO()
-            writer = csv.writer(si)
+            writer = csv.writer(si, lineterminator='\n')  # Utiliser '\n' pour éviter des problèmes de saut de ligne sur Windows
             
             # Écrire les en-têtes
             writer.writerow(['Utilisateur', 'Femmes', 'Hommes', 'Enfants', 'TITE (FCFA)', 'Commentaire', 'District', 'Région'])
             
             # Écrire les données
             for entry in data_entry_entries:
+                # Remplacer les sauts de ligne dans le commentaire pour éviter des décalages dans Excel
+                commentaire = (entry.commentaire if entry.commentaire else 'Aucun').replace('\n', ' ').replace('\r', ' ')
                 writer.writerow([
                     entry.user.name,
                     entry.women if entry.women is not None else 0,
                     entry.men if entry.men is not None else 0,
                     entry.children if entry.children is not None else 0,
                     round(entry.tite, 2) if entry.tite is not None else 0.0,
-                    entry.commentaire if entry.commentaire else 'Aucun',
+                    commentaire,
                     entry.location.name if entry.location and entry.location.type == 'DIS' else 'N/A',
                     entry.location.parent.name if entry.location and entry.location.parent else (entry.location.name if entry.location else 'N/A')
                 ])
 
-            # Préparer la réponse
-            output = si.getvalue()
+            # Ajouter le BOM pour UTF-8
+            output = '\ufeff' + si.getvalue()
             si.close()
 
             return Response(
                 output,
-                mimetype='text/csv',
+                mimetype='text/csv; charset=utf-8',
                 headers={
                     'Content-Disposition': f'attachment; filename=data_entries_{interval_start.strftime("%Y%m%d")}_to_{interval_end.strftime("%Y%m%d")}.csv'
                 }
