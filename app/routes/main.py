@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, render_template, request, flash, redirect, url_for, current_app
+from flask import Blueprint, abort, render_template, request, flash, redirect, url_for, current_app, Response
 from flask_login import current_user, login_required
 from app.models import DataEntry, Location, User, ChangeRequest, PromotionRequest, TeamReport
 from app.forms import DataEntryForm
@@ -7,8 +7,28 @@ from datetime import datetime, timedelta
 from app.utils.performance import calculate_regional_performance
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import SQLAlchemyError
+import csv
+from io import StringIO
 
 main_bp = Blueprint('main', __name__)
+
+# Fonction utilitaire pour calculer l'intervalle de mardi à mardi
+def get_tuesday_to_tuesday_interval():
+    today = datetime.now()
+    # Trouver le jour de la semaine (0 = lundi, 1 = mardi, ..., 6 = dimanche)
+    days_since_tuesday = (today.weekday() - 1) % 7
+    # Si aujourd'hui est mardi (weekday = 1), days_since_tuesday = 0
+    # Si aujourd'hui est mercredi (weekday = 2), days_since_tuesday = 1, etc.
+    
+    # Début de l'intervalle : le mardi précédent
+    start_date = today - timedelta(days=days_since_tuesday)
+    start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Fin de l'intervalle : le lundi suivant (6 jours après le mardi)
+    end_date = start_date + timedelta(days=6)
+    end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+    
+    return start_date, end_date
 
 @main_bp.route('/')
 def home():
@@ -193,18 +213,53 @@ def dashboard():
                         monthly_totals[month_idx] += entry.members
                     monthly_data[region.id] = monthly_totals
 
+                # Calcul de l'intervalle de mardi à mardi
+                interval_start, interval_end = get_tuesday_to_tuesday_interval()
+
+                # Entrées récentes des Data Entries (filtré par l'intervalle de mardi à mardi)
+                data_entry_entries = DataEntry.query.options(
+                    joinedload(DataEntry.user),
+                    joinedload(DataEntry.location)
+                ).join(User, DataEntry.user_id == User.id).filter(
+                    User.role == 'data_entry',
+                    DataEntry.date >= interval_start,
+                    DataEntry.date <= interval_end
+                ).order_by(DataEntry.date.desc()).limit(10).all()
+
+                # Données Manquantes : Utilisateurs (data_entry ou team_lead) sans entrées dans l'intervalle
+                # Étape 1 : Récupérer tous les utilisateurs data_entry et team_lead
+                relevant_users = User.query.options(
+                    joinedload(User.location)
+                ).filter(
+                    User.role.in_(['data_entry', 'team_lead'])
+                ).all()
+
+                # Étape 2 : Identifier les utilisateurs qui ont des entrées dans l'intervalle
+                users_with_entries = db.session.query(
+                    DataEntry.user_id
+                ).filter(
+                    DataEntry.date >= interval_start,
+                    DataEntry.date <= interval_end
+                ).distinct().all()
+                users_with_entries_ids = {user_id for (user_id,) in users_with_entries}
+
+                # Étape 3 : Filtrer les utilisateurs qui n'ont pas d'entrées
+                missing_data_users = [
+                    {
+                        'name': user.name,
+                        'matriculate': user.matriculate if user.matriculate else 'N/A',
+                        'phone': user.phone if user.phone else 'N/A',
+                        'district': user.location.name if user.location and user.location.type == 'DIS' else 'N/A'
+                    }
+                    for user in relevant_users
+                    if user.id not in users_with_entries_ids
+                ]
+
                 team_lead_reports = TeamReport.query.options(
                     joinedload(TeamReport.team_lead)
                 ).join(User, TeamReport.team_lead_id == User.id).filter(
                     User.role == 'team_lead'
                 ).order_by(TeamReport.created_at.desc()).limit(10).all()
-
-                data_entry_entries = DataEntry.query.options(
-                    joinedload(DataEntry.user),
-                    joinedload(DataEntry.location)
-                ).join(User, DataEntry.user_id == User.id).filter(
-                    User.role == 'data_entry'
-                ).order_by(DataEntry.date.desc()).limit(10).all()
 
                 pending_change_requests = ChangeRequest.query.options(
                     joinedload(ChangeRequest.requester),
@@ -226,7 +281,10 @@ def dashboard():
                 pending_change_requests=pending_change_requests,
                 pending_promotion_requests=pending_promotion_requests,
                 team_lead_reports=team_lead_reports,
-                data_entry_entries=data_entry_entries
+                data_entry_entries=data_entry_entries,
+                missing_data_users=missing_data_users,
+                interval_start=interval_start,
+                interval_end=interval_end
             )
 
         return abort(403)
@@ -371,4 +429,66 @@ def validate_requests():
     except SQLAlchemyError as e:
         current_app.logger.error(f"Erreur SQLAlchemy dans validate_requests : {str(e)}", exc_info=True)
         flash("Une erreur est survenue lors de la validation des demandes.", 'danger')
+        return redirect(url_for('main.dashboard'))
+
+@main_bp.route('/data_viewer/export_data_entries')
+@login_required
+def export_data_entries():
+    if current_user.role != 'data_viewer':
+        abort(403)
+
+    try:
+        with current_app.app_context():
+            # Calcul de l'intervalle de mardi à mardi
+            interval_start, interval_end = get_tuesday_to_tuesday_interval()
+
+            # Récupérer les mêmes données que dans la carte "Entrées Récentes des Data Entries"
+            data_entry_entries = DataEntry.query.options(
+                joinedload(DataEntry.user),
+                joinedload(DataEntry.location)
+            ).join(User, DataEntry.user_id == User.id).filter(
+                User.role == 'data_entry',
+                DataEntry.date >= interval_start,
+                DataEntry.date <= interval_end
+            ).order_by(DataEntry.date.desc()).limit(10).all()
+
+            # Préparer le fichier CSV
+            si = StringIO()
+            writer = csv.writer(si)
+            
+            # Écrire les en-têtes
+            writer.writerow(['Utilisateur', 'Femmes', 'Hommes', 'Enfants', 'TITE (FCFA)', 'Commentaire', 'District', 'Région'])
+            
+            # Écrire les données
+            for entry in data_entry_entries:
+                writer.writerow([
+                    entry.user.name,
+                    entry.women if entry.women is not None else 0,
+                    entry.men if entry.men is not None else 0,
+                    entry.children if entry.children is not None else 0,
+                    round(entry.tite, 2) if entry.tite is not None else 0.0,
+                    entry.commentaire if entry.commentaire else 'Aucun',
+                    entry.location.name if entry.location and entry.location.type == 'DIS' else 'N/A',
+                    entry.location.parent.name if entry.location and entry.location.parent else (entry.location.name if entry.location else 'N/A')
+                ])
+
+            # Préparer la réponse
+            output = si.getvalue()
+            si.close()
+
+            return Response(
+                output,
+                mimetype='text/csv',
+                headers={
+                    'Content-Disposition': f'attachment; filename=data_entries_{interval_start.strftime("%Y%m%d")}_to_{interval_end.strftime("%Y%m%d")}.csv'
+                }
+            )
+
+    except SQLAlchemyError as e:
+        current_app.logger.error(f"Erreur SQLAlchemy dans export_data_entries : {str(e)}", exc_info=True)
+        flash("Une erreur est survenue lors de l'exportation des données.", 'danger')
+        return redirect(url_for('main.dashboard'))
+    except Exception as e:
+        current_app.logger.error(f"Erreur inattendue dans export_data_entries : {str(e)}", exc_info=True)
+        flash("Une erreur inattendue est survenue lors de l'exportation.", 'danger')
         return redirect(url_for('main.dashboard'))

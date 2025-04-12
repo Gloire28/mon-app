@@ -132,39 +132,87 @@
 
     <!-- Section 4 : Entrées Récentes des Data Entries -->
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-success text-white">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Entrées Récentes des Data Entries</h5>
+            <a href="{{ url_for('main.export_data_entries') }}" class="btn btn-sm btn-light" data-bs-toggle="tooltip" title="Exporter les données en CSV">
+                <i class="fas fa-file-excel me-2"></i>Exporter
+            </a>
         </div>
         <div class="card-body">
+            <p class="text-muted mb-3">
+                Données du {{ interval_start.strftime('%d/%m/%Y') }} au {{ interval_end.strftime('%d/%m/%Y') }}
+            </p>
             {% if data_entry_entries %}
                 <div class="table-responsive-mobile">
                     <table class="table table-striped">
                         <thead>
                             <tr>
                                 <th>Utilisateur</th>
+                                <th>Femmes</th>
+                                <th>Hommes</th>
+                                <th>Enfants</th>
+                                <th>TITE</th>
+                                <th>Commentaire</th>
                                 <th>District</th>
                                 <th>Région</th>
-                                <th>Membres</th>
-                                <th>TITE</th>
-                                <th>Date</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for entry in data_entry_entries %}
                                 <tr>
                                     <td>{{ entry.user.name }}</td>
+                                    <td>{{ entry.women if entry.women is not none else 0 }}</td>
+                                    <td>{{ entry.men if entry.men is not none else 0 }}</td>
+                                    <td>{{ entry.children if entry.children is not none else 0 }}</td>
+                                    <td>{{ entry.tite|round(2) if entry.tite is not none else 0.0 }} FCFA</td>
+                                    <td>{{ entry.commentaire|truncate(50) if entry.commentaire else 'Aucun' }}</td>
                                     <td>{{ entry.location.name if entry.location and entry.location.type == 'DIS' else 'N/A' }}</td>
                                     <td>{{ entry.location.parent.name if entry.location and entry.location.parent else entry.location.name if entry.location else 'N/A' }}</td>
-                                    <td>{{ entry.members }}</td>
-                                    <td>{{ entry.tite|round(2) }} FCFA</td>
-                                    <td>{{ entry.date.strftime('%d/%m/%Y') }}</td>
                                 </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             {% else %}
-                <p class="text-center text-muted py-4">Aucune entrée récente des Data Entries.</p>
+                <p class="text-center text-muted py-4">Aucune entrée récente des Data Entries pour cet intervalle.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Section 4.5 : Données Manquantes -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Données Manquantes</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3">
+                Utilisateurs sans entrées du {{ interval_start.strftime('%d/%m/%Y') }} au {{ interval_end.strftime('%d/%m/%Y') }}
+            </p>
+            {% if missing_data_users %}
+                <div class="table-responsive-mobile">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Matricule</th>
+                                <th>Téléphone</th>
+                                <th>District</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in missing_data_users %}
+                                <tr>
+                                    <td>{{ user.name }}</td>
+                                    <td>{{ user.matriculate }}</td>
+                                    <td>{{ user.phone }}</td>
+                                    <td>{{ user.district }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-center text-muted py-4">Tous les utilisateurs ont soumis des entrées pour cet intervalle.</p>
             {% endif %}
         </div>
     </div>
