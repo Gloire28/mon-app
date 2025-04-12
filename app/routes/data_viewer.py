@@ -251,3 +251,46 @@ def regional_overview():
                          team_lead_reports=[],
                          data_entry_entries=[],
                          users_data=[])
+
+@data_viewer_bp.route('/dashboard')
+@login_required
+def dashboard():
+    check_data_viewer_role()
+    
+    # Récupération des données nécessaires pour le template dashboard.html
+    regions = Location.query.filter_by(type='REG').all()
+    regions_data = []
+    
+    for region in regions:
+        team_lead = User.query.filter_by(role='team_lead', location_id=region.id).first()
+        performance = calculate_regional_performance(region.id)
+        
+        regions_data.append({
+            'region': region,
+            'team_lead': team_lead,
+            'performance': performance
+        })
+
+    # Données pour les graphiques (comme dans votre template)
+    monthly_data = {}
+    for region in regions:
+        monthly_data[region.id] = [0] * 12
+
+    entries = DataEntry.query.filter(DataEntry.date >= datetime.now() - timedelta(days=365)).all()
+    
+    for entry in entries:
+        month = entry.date.month - 1
+        if entry.location.parent_id in monthly_data:
+            monthly_data[entry.location.parent_id][month] += entry.members
+        elif entry.location_id in monthly_data:
+            monthly_data[entry.location_id][month] += entry.members
+
+    # Rendu du template existant avec toutes les variables attendues
+    return render_template('data_viewer/dashboard.html',
+                         regions_data=regions_data,
+                         monthly_data=monthly_data,
+                         pending_change_requests=ChangeRequest.query.filter_by(status='pending').all(),
+                         pending_promotion_requests=[],
+                         team_lead_reports=TeamReport.query.order_by(TeamReport.created_at.desc()).limit(10).all(),
+                         data_entry_entries=DataEntry.query.order_by(DataEntry.date.desc()).limit(10).all(),
+                         users_data=User.query.all())
