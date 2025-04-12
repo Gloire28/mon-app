@@ -137,21 +137,34 @@ def dashboard():
                 # Optimiser users_data avec une jointure
                 users = User.query.options(joinedload(User.location)).all()
                 user_ids = [user.id for user in users]
-                entry_counts = db.session.query(
-                    DataEntry.user_id,
-                    db.func.count(DataEntry.id).label('total_entries')
-                ).filter(
-                    DataEntry.user_id.in_(user_ids)
-                ).group_by(DataEntry.user_id).all()
-                entry_counts_dict = {user_id: count for user_id, count in entry_counts}
-
-                first_comments = db.session.query(
-                    DataEntry.user_id,
-                    DataEntry.commentaire
-                ).filter(
-                    DataEntry.user_id.in_(user_ids)
-                ).group_by(DataEntry.user_id).all()
-                first_comments_dict = {user_id: commentaire for user_id, commentaire in first_comments}
+                # Sous-requête pour obtenir le dernier commentaire par utilisateur
+                latest_comments_subquery = (
+                    db.session.query(
+                        DataEntry.user_id,
+                        DataEntry.commentaire,
+                        db.func.row_number().over(
+                            partition_by=DataEntry.user_id,
+                            order_by=DataEntry.date.desc()
+                        ).label('rn')
+                    )
+                    .filter(DataEntry.user_id.in_(user_ids))
+                    .subquery()
+                )
+                # Récupérer le dernier commentaire (rn = 1) et compter les entrées
+                user_stats = (
+                    db.session.query(
+                        DataEntry.user_id,
+                        db.func.count(DataEntry.id).label('total_entries'),
+                        db.func.max(latest_comments_subquery.c.commentaire).label('latest_comment')
+                    )
+                    .outerjoin(latest_comments_subquery, (DataEntry.user_id == latest_comments_subquery.c.user_id) & (latest_comments_subquery.c.rn == 1))
+                    .filter(DataEntry.user_id.in_(user_ids))
+                    .group_by(DataEntry.user_id)
+                    .all()
+                )
+                # Créer des dictionnaires pour les stats
+                entry_counts_dict = {user_id: count for user_id, count, _ in user_stats}
+                latest_comments_dict = {user_id: comment for user_id, _, comment in user_stats}
 
                 users_data = [
                     {
@@ -160,10 +173,10 @@ def dashboard():
                         'district': {'name': user.location.name} if user.location and user.location.type == 'DIS' else None,
                         'region': {'name': user.location.parent.name if user.location.parent else user.location.name} if user.location else None,
                         'total_entries': entry_counts_dict.get(user.id, 0),
-                        'report': first_comments_dict.get(user.id, None)
+                        'report': latest_comments_dict.get(user.id, None)
                     } for user in users
                 ]
-
+            
                 # Calcul des données mensuelles
                 monthly_data = {}
                 start_date = datetime.now() - timedelta(days=365)
