@@ -249,7 +249,9 @@ def dashboard():
                         'name': user.name,
                         'matriculate': user.matriculate if user.matriculate else 'N/A',
                         'phone': user.phone if user.phone else 'N/A',
-                        'district': user.location.name if user.location and user.location.type == 'DIS' else 'N/A'
+                        'district': user.location.name if user.location and user.location.type == 'DIS' else 'N/A',
+                        'region': (user.location.parent.name if user.location and user.location.type == 'DIS' and user.location.parent else
+                                   user.location.name if user.location and user.location.type == 'REG' else 'N/A')
                     }
                     for user in relevant_users
                     if user.id not in users_with_entries_ids
