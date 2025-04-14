@@ -1,10 +1,9 @@
-<!-- app/templates/data_viewer/dashboard.html -->
 {% extends "shared/base.html" %}
 
 {% block content %}
 <div class="mt-4">
     <h1 class="h3 text-dark mb-4">
-        <i class="fas fa-tachometer-alt me-2" style="color: #38b2ac;"></i>Tableau de Bord - Data Viewer
+        <i class="fas fa-tachometer-alt me-2" style="color: #1E3A8A;"></i>Tableau de Bord - Data Viewer
     </h1>
 
     <!-- Section 1 : Demandes en Attente -->
@@ -53,7 +52,7 @@
     </div>
 
     <!-- Section 2 : Régions -->
-    <div class="card shadow-sm border-0 mb-4">
+    <div class="card shadow-sm border-0 mb-4 region-card">
         <div class="card-header bg-secondary text-white">
             <h5 class="mb-0"><i class="fas fa-map-marked me-2"></i>Régions</h5>
         </div>
@@ -80,9 +79,20 @@
                                         <div class="progress-bar bg-{{ data.performance.performance_class }}" style="width: {{ data.performance.total_score }}%"></div>
                                     </div>
                                 </p>
-                                <a href="{{ url_for('data_viewer.team_details', region_id=data.region.id) }}" class="btn btn-outline-primary w-100">
-                                    <i class="fas fa-users me-2"></i>Voir les rapports
-                                </a>
+                                <div class="d-flex flex-column gap-2">
+                                    <a href="{{ url_for('data_viewer.region_entries_view', region_id=data.region.id) }}" class="btn btn-outline-primary btn-sm w-100">
+                                        <i class="fas fa-clipboard-list me-2"></i>Voir les entrées récentes
+                                    </a>
+                                    <a href="{{ url_for('data_viewer.region_reports', region_id=data.region.id) }}" class="btn btn-outline-primary btn-sm w-100">
+                                        <i class="fas fa-file-alt me-2"></i>Voir les rapports
+                                    </a>
+                                    <a href="{{ url_for('data_viewer.export_region_entries_endpoint', region_id=data.region.id) }}" class="btn btn-outline-success btn-sm w-100">
+                                        <i class="fas fa-file-excel me-2"></i>Exporter
+                                    </a>
+                                    <a href="{{ url_for('data_viewer.team_details', region_id=data.region.id) }}" class="btn btn-outline-primary btn-sm w-100">
+                                        <i class="fas fa-users me-2"></i>Détails de la région
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -93,133 +103,7 @@
         </div>
     </div>
 
-    <!-- Section 3 : Rapports Récents des Team Leads -->
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-info text-white">
-            <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Rapports Récents des Team Leads</h5>
-        </div>
-        <div class="card-body">
-            {% if team_lead_reports %}
-                <div class="table-responsive-mobile">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Team Lead</th>
-                                <th>Région</th>
-                                <th>Type</th>
-                                <th>Date</th>
-                                <th>Commentaires</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for report in team_lead_reports %}
-                                <tr>
-                                    <td>{{ report.team_lead.name }}</td>
-                                    <td>{{ report.team_lead.location.name if report.team_lead.location else 'N/A' }}</td>
-                                    <td>{{ 'Mensuel' if report.month else 'Membre' }}</td>
-                                    <td>{{ report.created_at.strftime('%d/%m/%Y') }}</td>
-                                    <td>{{ report.comments|truncate(50) }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <p class="text-center text-muted py-4">Aucun rapport récent des Team Leads.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Section 4 : Entrées Récentes des Data Entries -->
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Entrées Récentes des Data Entries</h5>
-            <a href="{{ url_for('main.export_data_entries') }}" class="btn btn-sm btn-light" data-bs-toggle="tooltip" title="Exporter les données en CSV">
-                <i class="fas fa-file-excel me-2"></i>Exporter
-            </a>
-        </div>
-        <div class="card-body">
-            <p class="text-muted mb-3">
-                Données du {{ interval_start.strftime('%d/%m/%Y') }} au {{ interval_end.strftime('%d/%m/%Y') }}
-            </p>
-            {% if data_entry_entries %}
-                <div class="table-responsive-mobile">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Utilisateur</th>
-                                <th>Femmes</th>
-                                <th>Hommes</th>
-                                <th>Enfants</th>
-                                <th>TITE</th>
-                                <th>Commentaire</th>
-                                <th>District</th>
-                                <th>Région</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for entry in data_entry_entries %}
-                                <tr>
-                                    <td>{{ entry.user.name }}</td>
-                                    <td>{{ entry.women if entry.women is not none else 0 }}</td>
-                                    <td>{{ entry.men if entry.men is not none else 0 }}</td>
-                                    <td>{{ entry.children if entry.children is not none else 0 }}</td>
-                                    <td>{{ entry.tite|round(2) if entry.tite is not none else 0.0 }} FCFA</td>
-                                    <td>{{ entry.commentaire|truncate(50) if entry.commentaire else 'Aucun' }}</td>
-                                    <td>{{ entry.location.name if entry.location and entry.location.type == 'DIS' else 'N/A' }}</td>
-                                    <td>{{ entry.location.parent.name if entry.location and entry.location.parent else entry.location.name if entry.location else 'N/A' }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <p class="text-center text-muted py-4">Aucune entrée récente des Data Entries pour cet intervalle.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Section 4.5 : Données Manquantes -->
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-danger text-white">
-            <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Données Manquantes</h5>
-        </div>
-        <div class="card-body">
-            <p class="text-muted mb-3">
-                Utilisateurs sans entrées du {{ interval_start.strftime('%d/%m/%Y') }} au {{ interval_end.strftime('%d/%m/%Y') }}
-            </p>
-            {% if missing_data_users %}
-                <div class="table-responsive-mobile">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Nom</th>
-                                <th>Matricule</th>
-                                <th>Téléphone</th>
-                                <th>District</th>
-                                <th>Région</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for user in missing_data_users %}
-                                <tr>
-                                    <td>{{ user.name }}</td>
-                                    <td>{{ user.matriculate }}</td>
-                                    <td>{{ user.phone }}</td>
-                                    <td>{{ user.district }}</td>
-                                    <td>{{ user.region }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <p class="text-center text-muted py-4">Tous les utilisateurs ont soumis des entrées pour cet intervalle.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Section 5 : Utilisateurs -->
+    <!-- Section 3 : Utilisateurs -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-users me-2"></i>Utilisateurs</h5>
@@ -243,12 +127,12 @@
                     <tbody>
                         {% for user in users_data %}
                             <tr>
-                                <td>{{ user.name }}</td>
-                                <td>{{ user.role|title }}</td>
+                                <td>{{ user.user.name }}</td>
+                                <td>{{ user.user.role|title }}</td>
                                 <td>{{ user.district.name if user.district else 'N/A' }}</td>
                                 <td>{{ user.region.name if user.region else 'N/A' }}</td>
                                 <td>{{ user.total_entries }}</td>
-                                <td>{{ user.report|truncate(20) if user.report else 'Aucun' }}</td>
+                                <td>{{ user.last_comment|truncate(20) if user.last_comment else 'Aucun' }}</td>
                             </tr>
                         {% else %}
                             <tr><td colspan="6" class="text-center text-muted">Aucune donnée.</td></tr>
@@ -259,7 +143,7 @@
         </div>
     </div>
 
-    <!-- Section 6 : Analyse Mensuelle -->
+    <!-- Section 4 : Analyse Mensuelle -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-secondary text-white">
             <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Analyse Mensuelle</h5>
@@ -318,14 +202,28 @@ document.addEventListener('DOMContentLoaded', function () {
     const monthlyData = {{ monthly_data | tojson }};
     let chart;
 
+    // Palette de couleurs fixes pour les régions
+    const colorPalette = [
+        '#1E3A8A', // --primary
+        '#10B981', // --success
+        '#3B82F6', // --info
+        '#F59E0B', // --warning
+        '#6B7280', // --secondary
+        '#0891B2', // cyan
+        '#0D9488', // teal
+        '#D97706', // amber
+        '#EF4444', // --danger
+        '#8B5CF6'  // violet
+    ];
+
     // Fonction pour mettre à jour le graphique
     function updateChart(regionId, role) {
         let datasets = [];
         if (regionId === 'all') {
-            datasets = regionsData.map(region => ({
+            datasets = regionsData.map((region, index) => ({
                 label: region.region.name,
                 data: monthlyData[region.region.id] || Array(12).fill(0),
-                borderColor: `#${Math.floor(Math.random()*16777215).toString(16)}`,
+                borderColor: colorPalette[index % colorPalette.length],
                 fill: false
             }));
         } else {
@@ -334,16 +232,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 datasets.push({
                     label: region.region.name,
                     data: monthlyData[region.region.id] || Array(12).fill(0),
-                    borderColor: '#4299E1',
+                    borderColor: '#1E3A8A', // --primary
                     fill: false
                 });
             }
-        }
-
-        // Filtrer par rôle si nécessaire (côté client pour simplifier)
-        if (role !== 'all') {
-            // Note : Cela nécessiterait des données supplémentaires par rôle, à implémenter côté serveur
-            console.log(`Filtrage par rôle ${role} - À implémenter côté serveur`);
         }
 
         if (chart) {
@@ -384,7 +276,6 @@ document.addEventListener('DOMContentLoaded', function () {
         updateChart(regionId, role);
         exportMonthlyData.href = `/data_viewer/export-monthly-data?region_id=${regionId}&role=${role}`;
 
-        // Mettre à jour les données hebdomadaires si une région spécifique est sélectionnée
         if (regionId !== 'all') {
             fetch(`/data_viewer/weekly-data/${regionId}`)
                 .then(response => response.json())

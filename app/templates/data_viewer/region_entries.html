@@ -1,0 +1,106 @@
+<!-- app/templates/data_viewer/region_entries.html -->
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="mt-4">
+    <h1 class="h3 text-dark mb-4">
+        <i class="fas fa-clipboard-list me-2" style="color: #38b2ac;"></i>Entrées Récentes - {{ region.name }}
+    </h1>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Entrées Récentes des Utilisateurs</h5>
+            <a href="{{ url_for('data_viewer.export_region_entries_endpoint', region_id=region.id) }}" class="btn btn-sm btn-light" data-bs-toggle="tooltip" title="Exporter les données en CSV">
+                <i class="fas fa-file-excel me-2"></i>Exporter
+            </a>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3">
+                Données du {{ interval_start.strftime('%d/%m/%Y') }} au {{ interval_end.strftime('%d/%m/%Y') }}
+            </p>
+            {% if entries or users_without_entries %}
+                <div class="table-responsive-mobile">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Utilisateur</th>
+                                <th>Femmes</th>
+                                <th>Hommes</th>
+                                <th>Enfants</th>
+                                <th>TITE</th>
+                                <th>Commentaire</th>
+                                <th>District</th>
+                                <th>Numéro de téléphone</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in entries.items %}
+                                <tr>
+                                    <td>{{ entry.user.name }}</td>
+                                    <td>{{ entry.women if entry.women is not none else 0 }}</td>
+                                    <td>{{ entry.men if entry.men is not none else 0 }}</td>
+                                    <td>{{ entry.children if entry.children is not none else 0 }}</td>
+                                    <td>{{ entry.tite|round(2) if entry.tite is not none else 0.0 }} FCFA</td>
+                                    <td>{{ entry.commentaire|truncate(50) if entry.commentaire else 'Aucun' }}</td>
+                                    <td>{{ entry.location.name if entry.location and entry.location.type == 'DIS' else 'N/A' }}</td>
+                                    <td>{{ entry.user.phone if entry.user.phone else 'N/A' }}</td>
+                                </tr>
+                            {% endfor %}
+                            {% for user in users_without_entries %}
+                                <tr class="table-warning">
+                                    <td>{{ user.name }}</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                    <td>Aucune entrée</td>
+                                    <td>{{ user.district if user.district else 'N/A' }}</td>
+                                    <td>{{ user.phone if user.phone else 'N/A' }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if entries.total > entries.per_page %}
+                    <nav aria-label="Pagination des entrées">
+                        <ul class="pagination justify-content-center mt-4">
+                            <li class="page-item {% if not entries.has_prev %}disabled{% endif %}">
+                                <a class="page-link" href="{% if entries.has_prev %}{{ url_for('data_viewer.region_entries', region_id=region.id, page=entries.prev_num) }}{% else %}#{% endif %}">Précédent</a>
+                            </li>
+                            {% for page_num in entries.iter_pages(left_edge=1, left_current=2, right_current=3, right_edge=1) %}
+                                {% if page_num %}
+                                    <li class="page-item {% if page_num == entries.page %}active{% endif %}">
+                                        <a class="page-link" href="{{ url_for('data_viewer.region_entries', region_id=region.id, page=page_num) }}">{{ page_num }}</a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                {% endif %}
+                            {% endfor %}
+                            <li class="page-item {% if not entries.has_next %}disabled{% endif %}">
+                                <a class="page-link" href="{% if entries.has_next %}{{ url_for('data_viewer.region_entries', region_id=region.id, page=entries.next_num) }}{% else %}#{% endif %}">Suivant</a>
+                            </li>
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <p class="text-center text-muted py-4">Aucune entrée ou utilisateur pour cet intervalle.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Activer les tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

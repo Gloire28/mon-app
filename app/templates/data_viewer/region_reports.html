@@ -1,0 +1,66 @@
+<!-- app/templates/data_viewer/region_reports.html -->
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="mt-4">
+    <h1 class="h3 text-dark mb-4">
+        <i class="fas fa-file-alt me-2" style="color: #38b2ac;"></i>Rapports Récents - {{ region.name }}
+    </h1>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Rapports du Team Lead</h5>
+        </div>
+        <div class="card-body">
+            {% if team_lead %}
+                <p class="text-muted mb-3">
+                    Rapports soumis par {{ team_lead.name }} pour la région {{ region.name }}.
+                </p>
+                {% if reports %}
+                    <div class="table-responsive-mobile">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Team Lead</th>
+                                    <th>Région</th>
+                                    <th>Type</th>
+                                    <th>Date</th>
+                                    <th>Commentaires</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in reports %}
+                                    <tr>
+                                        <td>{{ report.team_lead.name }}</td>
+                                        <td>{{ region.name }}</td>
+                                        <td>{{ 'Mensuel' if report.month else 'Membre' }}</td>
+                                        <td>{{ report.created_at.strftime('%d/%m/%Y') }}</td>
+                                        <td>{{ report.comments|truncate(50) if report.comments else 'Aucun' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-center text-muted py-4">Aucun rapport soumis par le Team Lead pour cette région.</p>
+                {% endif %}
+            {% else %}
+                <p class="text-center text-muted py-4">Aucun Team Lead assigné à cette région.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Activer les tooltips (si ajouté ultérieurement)
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

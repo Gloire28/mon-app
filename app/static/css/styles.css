@@ -1,3 +1,4 @@
+/* app/static/css/styles.css */
 /* Palette de couleurs */
 :root {
     --sidebar-bg: #1E3A8A; /* Bleu profond pour la sidebar */
@@ -386,6 +387,7 @@ body {
         font-size: 1.25rem;
     }
 }
+
 .bg-gradient-teal {
     background: linear-gradient(135deg, #0D9488, #2DD4BF);
 }
@@ -401,4 +403,22 @@ body {
 /* Ajustement pour centrer verticalement la carte Titre Mensuel */
 .d-flex.align-items-center .card {
     margin: auto;
+}
+
+/* Styles spécifiques pour la carte Régions */
+.region-card .card-body {
+    padding: 1rem;
+}
+
+.region-card .btn {
+    margin-bottom: 0.5rem;
+    width: 100%;
+    text-align: left;
+}
+
+@media (max-width: 576px) {
+    .region-card .btn {
+        font-size: 0.85rem;
+        padding: 0.3rem 0.6rem;
+    }
 }

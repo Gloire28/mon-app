@@ -1,33 +1,24 @@
-from flask import Blueprint, abort, render_template, request, flash, redirect, url_for, current_app, Response
+from flask import Blueprint, abort, render_template, request, flash, redirect, url_for, current_app
 from flask_login import current_user, login_required
-from app.models import DataEntry, Location, User, ChangeRequest, PromotionRequest, TeamReport
+from app.models import DataEntry, Location, User, ChangeRequest, PromotionRequest
 from app.forms import DataEntryForm
 from app import db
-from datetime import datetime, timedelta
-from app.utils.performance import calculate_regional_performance
+from datetime import date, datetime, timedelta
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import SQLAlchemyError
-import csv
-from io import StringIO
+
+from app.utils.performance import calculate_regional_performance
 
 main_bp = Blueprint('main', __name__)
 
 # Fonction utilitaire pour calculer l'intervalle de mardi à mardi
 def get_tuesday_to_tuesday_interval():
     today = datetime.now()
-    # Trouver le jour de la semaine (0 = lundi, 1 = mardi, ..., 6 = dimanche)
     days_since_tuesday = (today.weekday() - 1) % 7
-    # Si aujourd'hui est mardi (weekday = 1), days_since_tuesday = 0
-    # Si aujourd'hui est mercredi (weekday = 2), days_since_tuesday = 1, etc.
-    
-    # Début de l'intervalle : le mardi précédent
     start_date = today - timedelta(days=days_since_tuesday)
     start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
-    
-    # Fin de l'intervalle : le lundi suivant (6 jours après le mardi)
     end_date = start_date + timedelta(days=6)
     end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-    
     return start_date, end_date
 
 @main_bp.route('/')
@@ -42,10 +33,8 @@ def dashboard():
     try:
         if current_user.role == 'data_entry':
             return redirect(url_for('data.dashboard'))
-
         elif current_user.role == 'team_lead':
             with current_app.app_context():
-                # Validate region assignment
                 if not current_user.location or current_user.location.type != 'REG':
                     flash("Aucune région valide attribuée", 'danger')
                     return render_template(
@@ -58,11 +47,9 @@ def dashboard():
                         district_entries_data=[]
                     )
 
-                # Get districts under this region
                 districts = Location.query.filter_by(parent_id=current_user.location_id, type='DIS').all()
                 district_ids = [d.id for d in districts]
 
-                # Calculate metrics
                 team_members_count = User.query.filter(
                     User.role == 'data_entry',
                     User.location_id.in_(district_ids)
@@ -76,7 +63,6 @@ def dashboard():
                     DataEntry.date >= current_month_start
                 ).scalar() or 0.0
 
-                # Get pending change requests with validation
                 pending_requests = ChangeRequest.query.options(
                     joinedload(ChangeRequest.requester),
                     joinedload(ChangeRequest.target_district),
@@ -87,7 +73,6 @@ def dashboard():
                     ChangeRequest.target_district_id.in_(district_ids)
                 ).all()
 
-                # Validate regions for each request
                 valid_pending_requests = []
                 for req in pending_requests:
                     if not req.target_district:
@@ -104,7 +89,6 @@ def dashboard():
                         continue
                     valid_pending_requests.append(req)
 
-                # Group metrics into a dictionary
                 metrics = {
                     'districts_count': districts_count,
                     'team_members': team_members_count,
@@ -112,10 +96,8 @@ def dashboard():
                     'pending_requests_count': len(valid_pending_requests)
                 }
 
-                # Section "Mon District" (pour Team Lead, on affiche les données agrégées des districts)
                 form = DataEntryForm()
                 form.load_locations(user_location_id=current_user.location_id)
-                # Récupérer les entrées des data_entry dans les districts de la région
                 district_entries = DataEntry.query.options(
                     joinedload(DataEntry.user),
                     joinedload(DataEntry.location)
@@ -142,163 +124,115 @@ def dashboard():
                 district_entries=district_entries,
                 district_entries_data=district_entries_data
             )
-
         elif current_user.role == 'data_viewer':
             with current_app.app_context():
+                # Vérifier si l'utilisateur a une localisation valide
+                # Charger les régions
                 regions = Location.query.filter_by(type='REG').all()
-                regions_data = [
-                    {
-                        'region': {'id': region.id, 'name': region.name},
-                        'team_lead': {'name': team_lead.name} if (team_lead := User.query.filter_by(role='team_lead', location_id=region.id).first()) else None,
-                        'performance': calculate_regional_performance(region.id)
-                    } for region in regions
-                ]
-
-                # Optimiser users_data avec une jointure
-                users = User.query.options(joinedload(User.location)).all()
-                user_ids = [user.id for user in users]
-                # Sous-requête pour obtenir le dernier commentaire par utilisateur
-                latest_comments_subquery = (
-                    db.session.query(
-                        DataEntry.user_id,
-                        DataEntry.commentaire,
-                        db.func.row_number().over(
-                            partition_by=DataEntry.user_id,
-                            order_by=DataEntry.date.desc()
-                        ).label('rn')
-                    )
-                    .filter(DataEntry.user_id.in_(user_ids))
-                    .subquery()
-                )
-                # Récupérer le dernier commentaire (rn = 1) et compter les entrées
-                user_stats = (
-                    db.session.query(
-                        DataEntry.user_id,
-                        db.func.count(DataEntry.id).label('total_entries'),
-                        db.func.max(latest_comments_subquery.c.commentaire).label('latest_comment')
-                    )
-                    .outerjoin(latest_comments_subquery, (DataEntry.user_id == latest_comments_subquery.c.user_id) & (latest_comments_subquery.c.rn == 1))
-                    .filter(DataEntry.user_id.in_(user_ids))
-                    .group_by(DataEntry.user_id)
-                    .all()
-                )
-                # Créer des dictionnaires pour les stats
-                entry_counts_dict = {user_id: count for user_id, count, _ in user_stats}
-                latest_comments_dict = {user_id: comment for user_id, _, comment in user_stats}
-
-                users_data = [
-                    {
-                        'name': user.name,
-                        'role': user.role,
-                        'district': {'name': user.location.name} if user.location and user.location.type == 'DIS' else None,
-                        'region': {'name': user.location.parent.name if user.location.parent else user.location.name} if user.location else None,
-                        'total_entries': entry_counts_dict.get(user.id, 0),
-                        'report': latest_comments_dict.get(user.id, None)
-                    } for user in users
-                ]
-            
-                # Calcul des données mensuelles
-                monthly_data = {}
-                start_date = datetime.now() - timedelta(days=365)
+                regions_data = []
                 for region in regions:
-                    # Remplacer region.children par une requête explicite
-                    district_ids = [loc.id for loc in Location.query.filter_by(parent_id=region.id, type='DIS').all()]
-                    entries = DataEntry.query.join(Location, DataEntry.location_id == Location.id).filter(
-                        Location.id.in_(district_ids + [region.id]),
-                        DataEntry.date >= start_date
-                    ).all()
-                    monthly_totals = [0] * 12
-                    for entry in entries:
-                        month_idx = entry.date.month - 1
-                        monthly_totals[month_idx] += entry.members
-                    monthly_data[region.id] = monthly_totals
-
-                # Calcul de l'intervalle de mardi à mardi
-                interval_start, interval_end = get_tuesday_to_tuesday_interval()
-
-                # Entrées récentes des Data Entries (filtré par l'intervalle de mardi à mardi)
-                data_entry_entries = DataEntry.query.options(
-                    joinedload(DataEntry.user),
-                    joinedload(DataEntry.location)
-                ).join(User, DataEntry.user_id == User.id).filter(
-                    User.role == 'data_entry',
-                    DataEntry.date >= interval_start,
-                    DataEntry.date <= interval_end
-                ).order_by(DataEntry.date.desc()).limit(10).all()
-
-                # Données Manquantes : Utilisateurs (data_entry ou team_lead) sans entrées dans l'intervalle
-                # Étape 1 : Récupérer tous les utilisateurs data_entry et team_lead
-                relevant_users = User.query.options(
-                    joinedload(User.location)
-                ).filter(
-                    User.role.in_(['data_entry', 'team_lead'])
-                ).all()
-
-                # Étape 2 : Identifier les utilisateurs qui ont des entrées dans l'intervalle
-                users_with_entries = db.session.query(
-                    DataEntry.user_id
-                ).filter(
-                    DataEntry.date >= interval_start,
-                    DataEntry.date <= interval_end
-                ).distinct().all()
-                users_with_entries_ids = {user_id for (user_id,) in users_with_entries}
-
-                # Étape 3 : Filtrer les utilisateurs qui n'ont pas d'entrées
-                missing_data_users = [
-                    {
-                        'name': user.name,
-                        'matriculate': user.matriculate if user.matriculate else 'N/A',
-                        'phone': user.phone if user.phone else 'N/A',
-                        'district': user.location.name if user.location and user.location.type == 'DIS' else 'N/A',
-                        'region': (user.location.parent.name if user.location and user.location.type == 'DIS' and user.location.parent else
-                                   user.location.name if user.location and user.location.type == 'REG' else 'N/A')
-                    }
-                    for user in relevant_users
-                    if user.id not in users_with_entries_ids
-                ]
-
-                team_lead_reports = TeamReport.query.options(
-                    joinedload(TeamReport.team_lead)
-                ).join(User, TeamReport.team_lead_id == User.id).filter(
-                    User.role == 'team_lead'
-                ).order_by(TeamReport.created_at.desc()).limit(10).all()
-
+                    team_lead = User.query.filter_by(role='team_lead', location_id=region.id).first()
+                    performance = calculate_regional_performance(region.id)
+                    regions_data.append({
+                        'region': {
+                            'id': region.id,
+                            'name': region.name,
+                            'type': region.type
+                        },
+                        'team_lead': {
+                            'id': team_lead.id,
+                            'name': team_lead.name
+                        } if team_lead else None,
+                        'performance': performance
+                    })
+                
+                # Charger les utilisateurs
+                users_data = []
+                users = User.query.all()
+                for user in users:
+                    total_entries = DataEntry.query.filter_by(user_id=user.id).count()
+                    last_entry = DataEntry.query.filter_by(user_id=user.id).order_by(DataEntry.date.desc()).first()
+                    # Charger la localisation de l'utilisateur
+                    location = Location.query.get(user.location_id) if user.location_id else None
+                    district = location if location and location.type == 'DIS' else None
+                    region = location.parent if district else (location if location and location.type == 'REG' else None)
+                    users_data.append({
+                        'user': {
+                            'id': user.id,
+                            'name': user.name,
+                            'role': user.role
+                        },
+                        'district': district,
+                        'region': region,
+                        'total_entries': total_entries,
+                        'last_comment': last_entry.commentaire[:20] if last_entry and last_entry.commentaire else 'Aucun'
+                    })
+                
+                # Charger les données mensuelles
+                start_date = datetime.now() - timedelta(days=365)
+                entries = DataEntry.query.filter(DataEntry.date >= start_date).all()  # Correction ici: filter() au lieu de filter_by()
+                monthly_data = {}
+                for i in range(12):
+                    month_date = (datetime.now() - timedelta(days=30 * i)).replace(day=1)
+                    month_key = month_date.strftime('%b %Y')
+                    monthly_data[month_key] = 0
+                for entry in entries:
+                    try:
+                        month_key = entry.date.strftime('%b %Y')
+                        if month_key in monthly_data:
+                            monthly_data[month_key] += entry.members if entry.members is not None else 0
+                    except AttributeError as ae:
+                        current_app.logger.warning(f"Entrée invalide (ID {entry.id}) : champ 'members' manquant ou None - ignorée")
+                        continue
+                
+                # Vérifier si monthly_data contient des données significatives
+                if all(value == 0 for value in monthly_data.values()):
+                    flash("Aucune donnée disponible pour le graphique mensuel (dernière année).", 'info')
+                
+                # Charger les demandes en attente
                 pending_change_requests = ChangeRequest.query.options(
                     joinedload(ChangeRequest.requester),
                     joinedload(ChangeRequest.target_district),
                     joinedload(ChangeRequest.target_region),
                     joinedload(ChangeRequest.exchange_with)
                 ).filter_by(status='pending_data_entry').all()
-
+                
                 pending_promotion_requests = PromotionRequest.query.options(
                     joinedload(PromotionRequest.user),
                     joinedload(PromotionRequest.requested_region)
                 ).filter_by(status='pending').all()
-
+            
             return render_template(
                 'data_viewer/dashboard.html',
                 regions_data=regions_data,
                 users_data=users_data,
                 monthly_data=monthly_data,
                 pending_change_requests=pending_change_requests,
-                pending_promotion_requests=pending_promotion_requests,
-                team_lead_reports=team_lead_reports,
-                data_entry_entries=data_entry_entries,
-                missing_data_users=missing_data_users,
-                interval_start=interval_start,
-                interval_end=interval_end
+                pending_promotion_requests=pending_promotion_requests
             )
-
         return abort(403)
 
     except SQLAlchemyError as e:
-        current_app.logger.error(f"Erreur SQLAlchemy dans dashboard : {str(e)}", exc_info=True)
-        flash("Une erreur est survenue lors du chargement du tableau de bord.", 'danger')
+        current_app.logger.error(f"Erreur SQLAlchemy dans dashboard pour l'utilisateur {current_user.id} ({current_user.role}) : {str(e)}", exc_info=True)
+        flash(f"Erreur de base de données lors du chargement du tableau de bord ({current_user.role}). Contactez l'administrateur.", 'danger')
+        return render_template('main/home.html')
+    except TypeError as te:
+        current_app.logger.error(f"Erreur de sérialisation dans dashboard pour l'utilisateur {current_user.id} ({current_user.role}) : {str(te)}", exc_info=True)
+        flash(f"Erreur de données dans le tableau de bord ({current_user.role}) : format invalide. Contactez l'administrateur.", 'danger')
+        return render_template('main/home.html')
+    except UnboundLocalError as ule:
+        current_app.logger.error(f"Erreur de variable dans dashboard pour l'utilisateur {current_user.id} ({current_user.role}) : {str(ule)}", exc_info=True)
+        flash(f"Erreur de données dans le tableau de bord ({current_user.role}). Vérifiez vos entrées ou contactez l'administrateur.", 'danger')
+        return render_template('main/home.html')
+    except AttributeError as ae:
+        current_app.logger.error(f"Erreur d'attribut dans dashboard pour l'utilisateur {current_user.id} ({current_user.role}) : {str(ae)}", exc_info=True)
+        flash(f"Données invalides détectées dans le tableau de bord ({current_user.role}). Contactez l'administrateur.", 'danger')
         return render_template('main/home.html')
     except Exception as e:
-        current_app.logger.error(f"Erreur inattendue dans dashboard : {str(e)}", exc_info=True)
-        flash("Une erreur inattendue est survenue.", 'danger')
+        current_app.logger.error(f"Erreur inattendue dans dashboard pour l'utilisateur {current_user.id} ({current_user.role}) : {str(e)}", exc_info=True)
+        flash(f"Erreur inattendue pour le tableau de bord ({current_user.role}). Essayez à nouveau ou contactez l'administrateur.", 'danger')
         return render_template('main/home.html')
+
 
 @main_bp.route('/promote', methods=['GET', 'POST'])
 @login_required
@@ -327,7 +261,6 @@ def promote_data_entry():
             with current_app.app_context():
                 region = Location.query.get_or_404(region_id)
                 data_entry = User.query.get_or_404(data_entry_id)
-                # Vérifier si un Team Lead existe déjà pour cette région
                 team_lead = User.query.filter_by(role='team_lead', location_id=region.id).first()
                 if team_lead:
                     flash(f"Un Team Lead ({team_lead.name}) existe déjà pour la région {region.name}.", 'danger')
@@ -431,68 +364,4 @@ def validate_requests():
     except SQLAlchemyError as e:
         current_app.logger.error(f"Erreur SQLAlchemy dans validate_requests : {str(e)}", exc_info=True)
         flash("Une erreur est survenue lors de la validation des demandes.", 'danger')
-        return redirect(url_for('main.dashboard'))
-
-@main_bp.route('/data_viewer/export_data_entries')
-@login_required
-def export_data_entries():
-    if current_user.role != 'data_viewer':
-        abort(403)
-
-    try:
-        with current_app.app_context():
-            # Calcul de l'intervalle de mardi à mardi
-            interval_start, interval_end = get_tuesday_to_tuesday_interval()
-
-            # Récupérer les mêmes données que dans la carte "Entrées Récentes des Data Entries"
-            data_entry_entries = DataEntry.query.options(
-                joinedload(DataEntry.user),
-                joinedload(DataEntry.location)
-            ).join(User, DataEntry.user_id == User.id).filter(
-                User.role == 'data_entry',
-                DataEntry.date >= interval_start,
-                DataEntry.date <= interval_end
-            ).order_by(DataEntry.date.desc()).limit(10).all()
-
-            # Préparer le fichier CSV avec encodage UTF-8
-            si = StringIO()
-            writer = csv.writer(si, lineterminator='\n')  # Utiliser '\n' pour éviter des problèmes de saut de ligne sur Windows
-            
-            # Écrire les en-têtes
-            writer.writerow(['Utilisateur', 'Femmes', 'Hommes', 'Enfants', 'TITE (FCFA)', 'Commentaire', 'District', 'Région'])
-            
-            # Écrire les données
-            for entry in data_entry_entries:
-                # Remplacer les sauts de ligne dans le commentaire pour éviter des décalages dans Excel
-                commentaire = (entry.commentaire if entry.commentaire else 'Aucun').replace('\n', ' ').replace('\r', ' ')
-                writer.writerow([
-                    entry.user.name,
-                    entry.women if entry.women is not None else 0,
-                    entry.men if entry.men is not None else 0,
-                    entry.children if entry.children is not None else 0,
-                    round(entry.tite, 2) if entry.tite is not None else 0.0,
-                    commentaire,
-                    entry.location.name if entry.location and entry.location.type == 'DIS' else 'N/A',
-                    entry.location.parent.name if entry.location and entry.location.parent else (entry.location.name if entry.location else 'N/A')
-                ])
-
-            # Ajouter le BOM pour UTF-8
-            output = '\ufeff' + si.getvalue()
-            si.close()
-
-            return Response(
-                output,
-                mimetype='text/csv; charset=utf-8',
-                headers={
-                    'Content-Disposition': f'attachment; filename=data_entries_{interval_start.strftime("%Y%m%d")}_to_{interval_end.strftime("%Y%m%d")}.csv'
-                }
-            )
-
-    except SQLAlchemyError as e:
-        current_app.logger.error(f"Erreur SQLAlchemy dans export_data_entries : {str(e)}", exc_info=True)
-        flash("Une erreur est survenue lors de l'exportation des données.", 'danger')
-        return redirect(url_for('main.dashboard'))
-    except Exception as e:
-        current_app.logger.error(f"Erreur inattendue dans export_data_entries : {str(e)}", exc_info=True)
-        flash("Une erreur inattendue est survenue lors de l'exportation.", 'danger')
         return redirect(url_for('main.dashboard'))
