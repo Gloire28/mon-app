@@ -6,6 +6,11 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark font-weight-bold">
             <i class="fas fa-tachometer-alt me-2" style="color: #1E3A8A;"></i>Tableau de Bord - Team Lead
+            {% if unread_notifications|default(0) > 0 %}
+                <a href="{{ url_for('messages.index') }}">
+                    <span class="badge bg-danger rounded-pill ms-2">{{ unread_notifications }}</span>
+                </a>
+            {% endif %}
         </h1>
         <div class="col-lg-4">
             <div class="card shadow-sm border-0 rounded text-center bg-gradient-teal text-white">

@@ -462,3 +462,96 @@ body {
         font-size: 0.8rem;
     }
 }
+
+/* Styles pour la messagerie (Chat) */
+.chat-container {
+    height: 60vh;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.message {
+    max-width: 70%;
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    border-radius: 15px;
+    position: relative;
+    transition: var(--transition);
+}
+
+.message.sent {
+    background: linear-gradient(135deg, var(--primary), #4F46E5);
+    color: var(--text-light);
+    margin-left: auto;
+    text-align: right;
+}
+
+.message.received {
+    background-color: #e9ecef;
+    color: var(--text-primary);
+    margin-right: auto;
+}
+
+.message:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.message .timestamp {
+    font-size: 0.75rem;
+    color: #999;
+    display: block;
+    margin-top: 5px;
+}
+
+.message img, .message video {
+    max-width: 100%;
+    border-radius: 10px;
+    margin-top: 5px;
+}
+
+.message a.file-link {
+    color: var(--info);
+    text-decoration: underline;
+    transition: var(--transition);
+}
+
+.message a.file-link:hover {
+    color: #1D4ED8;
+}
+
+/* Formulaire de message */
+.message-form textarea {
+    resize: vertical;
+    border-radius: 8px;
+}
+
+.message-form .btn {
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+}
+
+@media (max-width: 576px) {
+    .chat-container {
+        height: 50vh;
+        padding: 10px;
+    }
+
+    .message {
+        max-width: 85%;
+        padding: 8px 12px;
+    }
+
+    .message .timestamp {
+        font-size: 0.65rem;
+    }
+
+    .message-form .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+}

@@ -19,8 +19,19 @@ app = create_app(config_class)
 static_folder = os.path.join(app.root_path, 'static')
 if not os.path.exists(static_folder):
     app.logger.error(f"Le dossier static n'existe pas à l'emplacement : {static_folder}")
+    os.makedirs(static_folder)
+    app.logger.info(f"Dossier static créé à : {static_folder}")
 else:
     app.logger.info(f"Dossier static trouvé à : {static_folder}")
+
+# Vérifier que le dossier uploads/messages existe pour les pièces jointes de la messagerie
+messages_upload_folder = os.path.join(static_folder, 'uploads', 'messages')
+if not os.path.exists(messages_upload_folder):
+    app.logger.warning(f"Le dossier uploads/messages n'existe pas, création à : {messages_upload_folder}")
+    os.makedirs(messages_upload_folder)
+    app.logger.info(f"Dossier uploads/messages créé à : {messages_upload_folder}")
+else:
+    app.logger.info(f"Dossier uploads/messages trouvé à : {messages_upload_folder}")
 
 # S'assurer que Flask utilise le bon dossier static
 app.static_folder = static_folder

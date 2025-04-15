@@ -3,4 +3,7 @@
 *.xlsx
 *.DS_Store
 __pycache__/
-*.pyc
+*.pycseed.py
+app/static/uploads/
+seed.py
+app/static/uploads/

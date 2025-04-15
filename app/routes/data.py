@@ -19,7 +19,6 @@ def check_data_entry_role():
     if current_user.role != 'data_entry':
         abort(403)
 
-# Route : Tableau de bord du Data Entry
 @data_bp.route('/dashboard', methods=['GET'])
 @login_required
 def dashboard():
@@ -32,6 +31,11 @@ def dashboard():
     """
     current_app.logger.debug(f"Utilisateur {current_user.name} accède à data.dashboard")
     check_data_entry_role()
+    
+    # Compter les notifications non lues pour la messagerie
+    unread_notifications = Notification.query.filter_by(user_id=current_user.id, read=False).filter(
+        Notification.message_id.isnot(None)  # Notifications liées à des messages
+    ).count()
     
     with current_app.app_context():
         # Charger les entrées récentes de l'utilisateur
@@ -101,7 +105,8 @@ def dashboard():
                           parent_region=current_user.location.parent if current_user.location else None,
                           pending_change=pending_change or initiated_change,
                           change_request_status=change_request_status,
-                          pending_promotion=pending_promotion)
+                          pending_promotion=pending_promotion,
+                          unread_notifications=unread_notifications)
 
 # Route : Faire une demande de changement de localisation
 @data_bp.route('/change_location', methods=['GET', 'POST'])

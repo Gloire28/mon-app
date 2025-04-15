@@ -47,6 +47,14 @@
                             </span>
                         </li>
                         <li class="nav-item">
+                            <a href="{{ url_for('messages.index') }}" class="nav-link">
+                                <i class="fas fa-comments me-2"></i>Messagerie
+                                {% if unread_notifications|default(0) > 0 %}
+                                    <span class="badge bg-danger rounded-pill">{{ unread_notifications }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a href="{{ url_for('auth.logout') }}" class="nav-link">
                                 <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
                             </a>
@@ -151,6 +159,16 @@
                             </a>
                         </li>
                     {% endif %}
+
+                    <!-- Messagerie -->
+                    <li class="nav-item">
+                        <a href="{{ url_for('messages.index') }}" class="nav-link">
+                            <i class="fas fa-comments me-2"></i>Messagerie
+                            {% if unread_notifications|default(0) > 0 %}
+                                <span class="badge bg-danger rounded-pill">{{ unread_notifications }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
                     
                     <!-- Déconnexion -->
                     <li class="nav-item mt-4">

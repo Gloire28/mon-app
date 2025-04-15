@@ -4,6 +4,8 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from config import Config
 import os
+from pathlib import Path
+from datetime import datetime  # Ajouté pour le filtre datetimeformat
 
 # Initialisation des extensions
 db = SQLAlchemy()
@@ -16,16 +18,34 @@ def format_number(value):
         return "{:,.2f}".format(float(value)).replace(",", " ")
     except (ValueError, TypeError):
         return value
-    
-    
+
+def datetimeformat(value, format='%d/%m/%Y %H:%M'):
+    """Formate une date/heure selon le format spécifié."""
+    if not isinstance(value, datetime):
+        return value
+    return value.strftime(format)
 
 def create_app(config_class=Config):
     """Factory d'application Flask"""
     app = Flask(__name__)
     
     # 1. Chargement de la configuration
-    app.logger.info("Chargement de la configuration...")
     app.config.from_object(config_class)
+    
+    # Configuration pour les uploads
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    UPLOAD_FOLDER = BASE_DIR / 'app' / 'static' / 'uploads' / 'messages'
+    app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
+    app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'mp4'}
+    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 Mo maximum
+
+    # Créer le dossier uploads/messages s'il n'existe pas
+    try:
+        UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+        app.logger.info(f"Dossier des uploads créé : {app.config['UPLOAD_FOLDER']}")
+    except Exception as e:
+        app.logger.error(f"Erreur lors de la création du dossier uploads : {str(e)}")
+        raise
     
     # Configuration spécifique pour GitHub Actions (CI)
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -33,25 +53,17 @@ def create_app(config_class=Config):
     # Initialisation dynamique de la configuration
     config_class.init_app(app)
     
-    # Log pour confirmer la base de données utilisée
-    app.logger.info(f"Base de données utilisée : {app.config['SQLALCHEMY_DATABASE_URI']}")
-    
     # 2. Initialisation des extensions
-    app.logger.info("Initialisation de Flask-SQLAlchemy...")
     db.init_app(app)
-    
-    app.logger.info("Initialisation de Flask-Login...")
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Veuillez vous connecter pour accéder à cette page.'
     login_manager.login_message_category = 'info'
-    
-    app.logger.info("Initialisation de Flask-Migrate...")
     migrate.init_app(app, db)
     
     # 3. Configuration des filtres Jinja2
-    app.logger.info("Enregistrement des filtres template...")
     app.jinja_env.filters['format_number'] = format_number
+    app.jinja_env.filters['datetimeformat'] = datetimeformat  # Ajout du filtre datetimeformat
     
     # 4. Gestion des erreurs
     @app.errorhandler(404)
@@ -70,42 +82,27 @@ def create_app(config_class=Config):
         return render_template('errors/500.html'), 500
     
     # 5. Enregistrement des Blueprints
-    app.logger.info("Enregistrement des blueprints...")
     from app.routes.auth import auth_bp
     from app.routes.main import main_bp
     from app.routes.team_lead import team_lead_bp
     from app.routes.data import data_bp
     from app.routes.data_viewer import data_viewer_bp
-    
+    from app.routes.messages import messages_bp
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(team_lead_bp, url_prefix='/team_lead')
     app.register_blueprint(data_bp)
     app.register_blueprint(data_viewer_bp)
+    app.register_blueprint(messages_bp)
     
-    # 6. Initialisation de la base de données avec vérification
-    with app.app_context():
-        app.logger.info("Vérification des modèles de base de données...")
-        try:
-            if not app.config.get('SQLALCHEMY_DATABASE_URI'):
-                raise RuntimeError("Configuration de base de données manquante!")
-                
-            db.create_all()
-            app.logger.info("Modèles de base de données vérifiés")
-        except Exception as e:
-            app.logger.critical(f"Erreur d'initialisation de la base: {str(e)}")
-            raise
-    
-    # 7. Configuration du user loader avec logging
+    # 6. Configuration du user loader
     @login_manager.user_loader
     def load_user(user_id):
         from app.models import User
         user = User.query.get(int(user_id))
-        if user:
-            app.logger.debug(f"Utilisateur chargé: {user.id}")
-        else:
+        if not user:
             app.logger.warning(f"Utilisateur introuvable: {user_id}")
         return user
     
-    app.logger.info("Application initialisée avec succès")
     return app

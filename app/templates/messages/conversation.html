@@ -1,0 +1,91 @@
+{% extends "shared/base.html" %}
+
+{% block title %}
+    Conversation - OPTIMIZER
+{% endblock %}
+
+{% block styles %}
+    {{ super() }}
+{% endblock %}
+
+{% block content %}
+    <div class="container mt-5 pt-5">
+        <h1 class="mb-4">
+            <i class="fas fa-comments me-2"></i>
+            {% if conversation.type == 'private' and other_user %}
+                Conversation avec {{ other_user.name }} ({{ other_user.role|title }})
+            {% elif conversation.title %}
+                {{ conversation.title }}
+            {% else %}
+                Région {{ conversation.location.name if conversation.location else 'N/A' }}
+            {% endif %}
+        </h1>
+
+        <!-- Conteneur des messages -->
+        <div class="chat-container" id="chat-container">
+            {% for message in messages %}
+                <div class="message {% if message.sender.id == current_user.id %}sent{% else %}received{% endif %}">
+                    <strong>
+                        {% if message.sender.role == 'data_entry' and conversation.type == 'group' %}
+                            {% if message.sender.location and message.sender.location.type == 'DIS' %}
+                                District {{ message.sender.location.name }}
+                            {% else %}
+                                Utilisateur sans district
+                            {% endif %}
+                        {% else %}
+                            {{ message.sender.name }}
+                        {% endif %}
+                    </strong>
+                    <div>
+                        {% if message.content %}
+                            <p>{{ message.content }}</p>
+                        {% endif %}
+                        {% if message.attachment_path %}
+                            {% if message.attachment_type == 'image' %}
+                                <img src="{{ url_for('static', filename=message.attachment_path) }}" alt="Pièce jointe">
+                            {% elif message.attachment_type == 'video' %}
+                                <video controls>
+                                    <source src="{{ url_for('static', filename=message.attachment_path) }}" type="video/mp4">
+                                    Votre navigateur ne supporte pas la lecture de vidéos.
+                                </video>
+                            {% else %}
+                                <a href="{{ url_for('static', filename=message.attachment_path) }}" class="file-link" target="_blank">
+                                    Télécharger le fichier
+                                </a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    <span class="timestamp">
+                        {{ message.timestamp|datetimeformat('%d/%m/%Y %H:%M') }}
+                    </span>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Formulaire pour envoyer un message -->
+        <form method="POST" action="{{ url_for('messages.send_message') }}" enctype="multipart/form-data" class="mt-4">
+            <input type="hidden" name="conversation_id" value="{{ conversation.id }}">
+            <div class="mb-3">
+                <textarea name="content" class="form-control" rows="3" placeholder="Écrivez votre message ici..."></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="file" class="form-label">Joindre un fichier (image, document, vidéo)</label>
+                <input type="file" name="file" id="file" class="form-control">
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-paper-plane me-2"></i>Envoyer
+            </button>
+        </form>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script>
+        // Faire défiler automatiquement vers le bas du chat
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatContainer = document.getElementById('chat-container');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        });
+    </script>
+{% endblock %}

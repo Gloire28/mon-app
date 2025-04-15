@@ -1,6 +1,6 @@
 from flask import Blueprint, abort, render_template, request, flash, redirect, url_for, current_app
 from flask_login import current_user, login_required
-from app.models import DataEntry, Location, User, ChangeRequest, PromotionRequest
+from app.models import DataEntry, Location, Notification, User, ChangeRequest, PromotionRequest
 from app.forms import DataEntryForm
 from app import db
 from datetime import date, datetime, timedelta
@@ -31,6 +31,11 @@ def home():
 @login_required
 def dashboard():
     try:
+        # Compter les notifications non lues pour la messagerie
+        unread_notifications = Notification.query.filter_by(user_id=current_user.id, read=False).filter(
+            Notification.message_id.isnot(None)  # Notifications liées à des messages
+        ).count()
+
         if current_user.role == 'data_entry':
             return redirect(url_for('data.dashboard'))
         elif current_user.role == 'team_lead':
@@ -44,7 +49,8 @@ def dashboard():
                         pending_requests=[],
                         form=None,
                         district_entries=[],
-                        district_entries_data=[]
+                        district_entries_data=[],
+                        unread_notifications=unread_notifications
                     )
 
                 districts = Location.query.filter_by(parent_id=current_user.location_id, type='DIS').all()
@@ -122,7 +128,8 @@ def dashboard():
                 pending_requests=valid_pending_requests,
                 form=form,
                 district_entries=district_entries,
-                district_entries_data=district_entries_data
+                district_entries_data=district_entries_data,
+                unread_notifications=unread_notifications
             )
         elif current_user.role == 'data_viewer':
             with current_app.app_context():
@@ -234,7 +241,8 @@ def dashboard():
                 donut_data=donut_data,
                 bar_data=bar_data,
                 pending_change_requests=pending_change_requests,
-                pending_promotion_requests=pending_promotion_requests
+                pending_promotion_requests=pending_promotion_requests,
+                unread_notifications=unread_notifications
             )
         return abort(403)
 
@@ -361,9 +369,12 @@ def validate_requests():
                     req = ChangeRequest.query.get_or_404(request_id)
                     if action == 'validate':
                         user = req.requester
+                        old_location_id = user.location_id
                         user.location_id = req.target_district_id
                         req.status = 'accepted'
                         req.responded_at = datetime.utcnow()
+                        db.session.flush()
+                        current_app.logger.info(f"Changement de localisation pour {user.name} (ID: {user.id}) : de location_id {old_location_id} à {user.location_id}")
                         flash(f"Changement de localisation validé pour {user.name}.", 'success')
                     elif action == 'reject':
                         req.status = 'rejected'
@@ -373,16 +384,20 @@ def validate_requests():
                     req = PromotionRequest.query.get_or_404(request_id)
                     if action == 'validate':
                         user = req.user
+                        old_location_id = user.location_id
                         user.role = 'team_lead'
                         user.location_id = req.requested_region_id
                         req.status = 'accepted'
                         req.responded_at = datetime.utcnow()
+                        db.session.flush()
+                        current_app.logger.info(f"Promotion de {user.name} (ID: {user.id}) en Team Lead, changement de localisation : de location_id {old_location_id} à {user.location_id}")
                         flash(f"Promotion validée pour {user.name} en Team Lead.", 'success')
                     elif action == 'reject':
                         req.status = 'rejected'
                         req.responded_at = datetime.utcnow()
                         flash(f"Promotion refusée pour {req.user.name}.", 'info')
-                db.session.commit()
+                    db.session.commit()
+                    
             return redirect(url_for('main.validate_requests'))
         return render_template('data_viewer/validate_requests.html', 
                               pending_change_requests=pending_change_requests, 

@@ -1,0 +1,74 @@
+{% extends "shared/base.html" %}
+
+{% block title %}
+    Messagerie - OPTIMIZER
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 pt-5">
+    <h1 class="mb-4"><i class="fas fa-comments me-2"></i>Messagerie</h1>
+
+    {% if conversations_data %}
+        <div class="list-group">
+            {% for data in conversations_data %}
+                {% set conversation = data.conversation %}
+                {% set last_message = data.last_message %}
+                {% set unread_count = data.unread_count %}
+                
+                <a href="{{ url_for('messages.conversation', conversation_id=conversation.id) }}"
+                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    <div class="w-75">
+                        <div class="d-flex align-items-center mb-1">
+                            <strong class="me-2">
+                                {% if conversation.type == 'private' %}
+                                    {% if conversation.messages %}
+                                        {% set other_user = conversation.messages[0].sender if conversation.messages[0].sender.id != current_user.id else conversation.messages[0].sender %}
+                                        {{ other_user.name }} ({{ other_user.role|title }})
+                                    {% else %}
+                                        Conversation privée
+                                    {% endif %}
+                                {% elif conversation.title %}
+                                    {{ conversation.title }}
+                                {% else %}
+                                    {% if conversation.location %}
+                                        Région {{ conversation.location.name }}
+                                    {% else %}
+                                        Groupe sans nom
+                                    {% endif %}
+                                {% endif %}
+                            </strong>
+                            {% if last_message %}
+                                <small class="text-muted ms-auto">
+                                    {{ last_message.timestamp|datetimeformat('%d/%m/%Y %H:%M') }}
+                                </small>
+                            {% endif %}
+                        </div>
+                        
+                        <p class="mb-0 text-muted text-truncate">
+                            {% if last_message %}
+                                {% if last_message.content %}
+                                    {{ last_message.content|truncate(75) }}
+                                {% else %}
+                                    <i class="fas fa-paperclip"></i> Pièce jointe
+                                {% endif %}
+                            {% else %}
+                                <i>Aucun message</i>
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    {% if unread_count > 0 %}
+                        <span class="badge bg-primary rounded-pill">
+                            {{ unread_count }}
+                        </span>
+                    {% endif %}
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>Aucune conversation disponible.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
