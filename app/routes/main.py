@@ -168,26 +168,51 @@ def dashboard():
                         'last_comment': last_entry.commentaire[:20] if last_entry and last_entry.commentaire else 'Aucun'
                     })
                 
-                # Charger les données mensuelles
+                # Charger les données pour les graphiques (donut et barres)
                 start_date = datetime.now() - timedelta(days=365)
-                entries = DataEntry.query.filter(DataEntry.date >= start_date).all()  # Correction ici: filter() au lieu de filter_by()
-                monthly_data = {}
-                for i in range(12):
-                    month_date = (datetime.now() - timedelta(days=30 * i)).replace(day=1)
-                    month_key = month_date.strftime('%b %Y')
-                    monthly_data[month_key] = 0
-                for entry in entries:
-                    try:
-                        month_key = entry.date.strftime('%b %Y')
-                        if month_key in monthly_data:
-                            monthly_data[month_key] += entry.members if entry.members is not None else 0
-                    except AttributeError as ae:
-                        current_app.logger.warning(f"Entrée invalide (ID {entry.id}) : champ 'members' manquant ou None - ignorée")
-                        continue
-                
-                # Vérifier si monthly_data contient des données significatives
-                if all(value == 0 for value in monthly_data.values()):
-                    flash("Aucune donnée disponible pour le graphique mensuel (dernière année).", 'info')
+                donut_data = {}  # { region_id: { role: total_entries } }
+                bar_data = {}    # { region_id: { role: { total_districts: X, districts_with_entries: Y, percentage: Z } } }
+
+                for region in regions:
+                    district_ids = [loc.id for loc in Location.query.filter_by(parent_id=region.id, type='DIS').all()]
+                    all_location_ids = district_ids + [region.id]
+                    
+                    # Charger les entrées pour la région (12 derniers mois)
+                    entries = DataEntry.query.join(User).filter(
+                        DataEntry.location_id.in_(all_location_ids),
+                        DataEntry.date >= start_date
+                    ).all()
+                    
+                    # Initialiser les données pour cette région
+                    donut_data[region.id] = {}
+                    bar_data[region.id] = {}
+                    
+                    # Calculer pour chaque rôle (all, team_lead, data_entry)
+                    for role in ['all', 'team_lead', 'data_entry']:
+                        # Graphique en donut : Total des entrées
+                        total_entries = sum(
+                            entry.members if entry.members is not None else 0
+                            for entry in entries
+                            if role == 'all' or entry.user.role == role
+                        )
+                        donut_data[region.id][role] = total_entries
+                        
+                        # Graphique en barres : Pourcentage de districts ayant soumis des données
+                        total_districts = len(district_ids)
+                        districts_with_entries = len(set(
+                            entry.location_id for entry in entries
+                            if entry.location_id in district_ids and (role == 'all' or entry.user.role == role)
+                        ))
+                        percentage = (districts_with_entries / total_districts * 100) if total_districts > 0 else 0
+                        bar_data[region.id][role] = {
+                            'total_districts': total_districts,
+                            'districts_with_entries': districts_with_entries,
+                            'percentage': round(percentage, 2)
+                        }
+
+                # Vérifier si donut_data contient des données significatives
+                if all(all(value == 0 for value in roles.values()) for roles in donut_data.values()):
+                    flash("Aucune donnée disponible pour les graphiques (dernière année).", 'info')
                 
                 # Charger les demandes en attente
                 pending_change_requests = ChangeRequest.query.options(
@@ -206,7 +231,8 @@ def dashboard():
                 'data_viewer/dashboard.html',
                 regions_data=regions_data,
                 users_data=users_data,
-                monthly_data=monthly_data,
+                donut_data=donut_data,
+                bar_data=bar_data,
                 pending_change_requests=pending_change_requests,
                 pending_promotion_requests=pending_promotion_requests
             )

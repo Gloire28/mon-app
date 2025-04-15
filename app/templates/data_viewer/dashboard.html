@@ -167,19 +167,27 @@
                     <i class="fas fa-file-excel me-2"></i>Exporter Mensuel
                 </a>
             </div>
-            <canvas id="monthlyPerformanceChart"></canvas>
-            <div id="weeklyDataTable" class="mt-3" style="display: none;">
-                <h6>Données Hebdomadaires</h6>
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Semaine</th>
-                            <th>Entrées</th>
-                            <th>Utilisateur</th>
-                        </tr>
-                    </thead>
-                    <tbody id="weeklyDataBody"></tbody>
-                </table>
+            <!-- Graphique en donut : Contribution des régions -->
+            <div class="chart-container mb-4">
+                <h6 class="chart-title text-center mb-3">Contribution des Régions (Total des Entrées)</h6>
+                <canvas id="donutChart" style="max-height: 300px;"></canvas>
+            </div>
+            <!-- Graphique en barres : Pourcentage de districts ayant soumis des données -->
+            <div class="chart-container">
+                <h6 class="chart-title text-center mb-3">Participation des Districts par Région (%)</h6>
+                <canvas id="barChart" style="max-height: 200px;"></canvas>
+            </div>
+        </div>
+   </div>
+            <!-- Graphique en donut : Contribution des régions -->
+            <div class="mb-4">
+                <h6 class="text-center mb-3">Contribution des Régions (Total des Entrées)</h6>
+                <canvas id="donutChart" style="max-height: 300px;"></canvas>
+            </div>
+            <!-- Graphique en barres : Pourcentage de districts ayant soumis des données -->
+            <div>
+                <h6 class="text-center mb-3">Participation des Districts par Région (%)</h6>
+                <canvas id="barChart" style="max-height: 200px;"></canvas>
             </div>
         </div>
     </div>
@@ -199,8 +207,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Données initiales
     const regionsData = {{ regions_data | tojson }};
-    const monthlyData = {{ monthly_data | tojson }};
-    let chart;
+    const donutData = {{ donut_data | tojson }};
+    const barData = {{ bar_data | tojson }};
+    let donutChart, barChart;
 
     // Palette de couleurs fixes pour les régions
     const colorPalette = [
@@ -216,48 +225,119 @@ document.addEventListener('DOMContentLoaded', function () {
         '#8B5CF6'  // violet
     ];
 
-    // Fonction pour mettre à jour le graphique
-    function updateChart(regionId, role) {
-        let datasets = [];
+    // Fonction pour mettre à jour les graphiques
+    function updateCharts(regionId, role) {
+        // Préparer les données pour le graphique en donut
+        let donutLabels = [];
+        let donutValues = [];
+        let donutColors = [];
         if (regionId === 'all') {
-            datasets = regionsData.map((region, index) => ({
-                label: region.region.name,
-                data: monthlyData[region.region.id] || Array(12).fill(0),
-                borderColor: colorPalette[index % colorPalette.length],
-                fill: false
-            }));
+            regionsData.forEach((region, index) => {
+                const totalEntries = donutData[region.region.id][role] || 0;
+                if (totalEntries > 0) {
+                    donutLabels.push(region.region.name);
+                    donutValues.push(totalEntries);
+                    donutColors.push(colorPalette[index % colorPalette.length]);
+                }
+            });
         } else {
             const region = regionsData.find(r => r.region.id == regionId);
-            if (region) {
-                datasets.push({
-                    label: region.region.name,
-                    data: monthlyData[region.region.id] || Array(12).fill(0),
-                    borderColor: '#1E3A8A', // --primary
-                    fill: false
-                });
+            if (region && donutData[regionId][role] > 0) {
+                donutLabels.push(region.region.name);
+                donutValues.push(donutData[regionId][role]);
+                donutColors.push('#1E3A8A');
             }
         }
 
-        if (chart) {
-            chart.destroy();
-        }
-
-        const ctx = document.getElementById('monthlyPerformanceChart').getContext('2d');
-        chart = new Chart(ctx, {
-            type: 'line',
+        // Mettre à jour le graphique en donut
+        if (donutChart) donutChart.destroy();
+        const donutCtx = document.getElementById('donutChart').getContext('2d');
+        donutChart = new Chart(donutCtx, {
+            type: 'doughnut',
             data: {
-                labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'],
-                datasets: datasets
+                labels: donutLabels,
+                datasets: [{
+                    data: donutValues,
+                    backgroundColor: donutColors,
+                    borderWidth: 1
+                }]
             },
             options: {
                 responsive: true,
+                plugins: {
+                    legend: { position: 'right' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                cutout: '60%' // Pour l'effet donut
+            }
+        });
+
+        // Préparer les données pour le graphique en barres
+        let barLabels = [];
+        let barValues = [];
+        let barColors = [];
+        if (regionId === 'all') {
+            regionsData.forEach((region, index) => {
+                const data = barData[region.region.id][role] || { percentage: 0 };
+                barLabels.push(region.region.name);
+                barValues.push(data.percentage);
+                barColors.push(colorPalette[index % colorPalette.length]);
+            });
+        } else {
+            const region = regionsData.find(r => r.region.id == regionId);
+            if (region) {
+                const data = barData[regionId][role] || { percentage: 0 };
+                barLabels.push(region.region.name);
+                barValues.push(data.percentage);
+                barColors.push('#1E3A8A');
+            }
+        }
+
+        // Mettre à jour le graphique en barres
+        if (barChart) barChart.destroy();
+        const barCtx = document.getElementById('barChart').getContext('2d');
+        barChart = new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: barLabels,
+                datasets: [{
+                    label: '% de Districts ayant soumis des données',
+                    data: barValues,
+                    backgroundColor: barColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y', // Barres horizontales
+                responsive: true,
                 scales: {
-                    y: { beginAtZero: true, title: { display: true, text: 'Entrées' } },
-                    x: { title: { display: true, text: 'Mois' } }
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: 'Pourcentage (%)' },
+                        ticks: { callback: value => `${value}%` }
+                    },
+                    y: { title: { display: true, text: 'Région' } }
                 },
                 plugins: {
-                    legend: { display: true },
-                    tooltip: { mode: 'index', intersect: false }
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.raw}%`;
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -267,34 +347,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const regionSelect = document.getElementById('regionSelect');
     const roleFilter = document.getElementById('roleFilter');
     const exportMonthlyData = document.getElementById('exportMonthlyData');
-    const weeklyDataTable = document.getElementById('weeklyDataTable');
-    const weeklyDataBody = document.getElementById('weeklyDataBody');
 
     function updateFilters() {
         const regionId = regionSelect.value;
         const role = roleFilter.value;
-        updateChart(regionId, role);
+        updateCharts(regionId, role);
         exportMonthlyData.href = `/data_viewer/export-monthly-data?region_id=${regionId}&role=${role}`;
-
-        if (regionId !== 'all') {
-            fetch(`/data_viewer/weekly-data/${regionId}`)
-                .then(response => response.json())
-                .then(data => {
-                    weeklyDataBody.innerHTML = data.map(entry => 
-                        `<tr><td>${entry.week}</td><td>${entry.entries}</td><td>${entry.user}</td></tr>`).join('');
-                    weeklyDataTable.style.display = 'block';
-                })
-                .catch(error => console.error('Error:', error));
-        } else {
-            weeklyDataTable.style.display = 'none';
-        }
     }
 
     regionSelect.addEventListener('change', updateFilters);
     roleFilter.addEventListener('change', updateFilters);
 
     // Initialisation
-    updateChart('all', 'all');
+    updateCharts('all', 'all');
 });
 </script>
 {% endblock %}

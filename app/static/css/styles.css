@@ -422,3 +422,43 @@ body {
         padding: 0.3rem 0.6rem;
     }
 }
+/* Styles pour les graphiques dans Analyse Mensuelle */
+.chart-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+#donutChart, #barChart {
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+/* Ajustement de la légende pour le graphique en donut */
+.chart-legend {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+/* Titres des graphiques */
+.chart-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Responsivité */
+@media (max-width: 576px) {
+    .chart-container {
+        max-width: 100%;
+        padding: 10px;
+    }
+
+    .chart-title {
+        font-size: 1rem;
+    }
+
+    .chart-legend {
+        font-size: 0.8rem;
+    }
+}
