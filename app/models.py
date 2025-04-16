@@ -11,6 +11,7 @@ from sqlalchemy import CheckConstraint
 class Location(db.Model):
     __tablename__ = 'locations'  # Utiliser 'locations' pour correspondre aux références
     id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(10), nullable=False, unique=True)  # Ajout du champ code
     name = db.Column(db.String(100), nullable=False)
     type = db.Column(db.String(3), nullable=False)  # 'REG' ou 'DIS'
     parent_id = db.Column(db.Integer, db.ForeignKey('locations.id'), nullable=True)
