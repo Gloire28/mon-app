@@ -1,9 +1,21 @@
+# Database and environment
 *.db
 .env
+instance/
+
+# Virtual environment
+.venv/
+venv/
+
+# System and temporary files
 *.xlsx
 *.DS_Store
+*.log
+
+# Python compiled files
 __pycache__/
-*.pycseed.py
-app/static/uploads/
+*.pyc
+
+# App-specific
 seed.py
 app/static/uploads/

@@ -6,26 +6,246 @@
 
 {% block styles %}
     {{ super() }}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart@latest/css/emoji-mart.css">
+    <style>
+        .chat-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 70px);
+            background-color: #ECE5DD;
+        }
+        .chat-header {
+            background: linear-gradient(135deg, var(--primary), #4F46E5);
+            color: var(--text-light);
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .chat-header h1 {
+            font-size: 1.5rem;
+            margin: 0;
+            flex: 1;
+        }
+        .chat-header .back-btn {
+            color: var(--text-light);
+            font-size: 1.2rem;
+            margin-right: 10px;
+        }
+        .chat-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            max-width: 75%;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            position: relative;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+        .message.sent {
+            background: #DCF8C6;
+            margin-left: auto;
+            border-bottom-right-radius: 2px;
+        }
+        .message.received {
+            background: #FFFFFF;
+            border-bottom-left-radius: 2px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .message .sender {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        .message .content {
+            word-break: break-word;
+        }
+        .message .timestamp {
+            font-size: 0.7rem;
+            color: #666;
+            text-align: right;
+            margin-top: 2px;
+        }
+        .message .status {
+            font-size: 0.6rem;
+            color: #34B7F1;
+            margin-left: 5px;
+        }
+        .message img, .message video {
+            max-width: 200px;
+            border-radius: 8px;
+            margin-top: 5px;
+        }
+        .message a.file-link {
+            color: var(--info);
+            text-decoration: underline;
+        }
+        .message .attachment-container {
+            position: relative;
+            display: inline-block;
+        }
+        .message .download-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .message .download-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .typing-indicator {
+            font-style: italic;
+            color: #666;
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+        }
+        .chat-footer {
+            background: #F0F0F0;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            position: sticky;
+            bottom: 0;
+        }
+        .message-form {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+        .message-form textarea {
+            flex: 1;
+            border-radius: 20px;
+            padding: 10px 15px;
+            border: 1px solid #ccc;
+            resize: none;
+            height: 40px;
+            font-size: 0.95rem;
+        }
+        .message-form .file-input {
+            display: none;
+        }
+        .message-form .file-label {
+            cursor: pointer;
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+        .message-form .emoji-btn {
+            cursor: pointer;
+            color: #666;
+            font-size: 1.2rem;
+        }
+        .message-form .send-btn {
+            background: var(--accent);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+        }
+        .emoji-picker-container {
+            position: absolute;
+            bottom: 60px;
+            left: 0;
+            z-index: 1000;
+            display: none;
+        }
+        .file-preview {
+            margin-top: 10px;
+            padding: 5px;
+            background: #fff;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 300px;
+        }
+        .file-preview img, .file-preview video {
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 5px;
+        }
+        .file-preview .file-info {
+            flex: 1;
+        }
+        .file-preview .file-name {
+            font-size: 0.9rem;
+            color: #333;
+        }
+        .file-preview .file-size {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .file-preview .remove-file {
+            cursor: pointer;
+            color: #ff4444;
+            font-size: 1.2rem;
+        }
+        @media (max-width: 576px) {
+            .chat-wrapper {
+                height: calc(100vh - 60px);
+            }
+            .chat-header h1 {
+                font-size: 1.2rem;
+            }
+            .message {
+                max-width: 85%;
+                font-size: 0.9rem;
+            }
+            .message-form textarea {
+                height: 35px;
+                font-size: 0.9rem;
+            }
+            .emoji-picker-container {
+                width: 100%;
+                left: 0;
+            }
+            .file-preview img, .file-preview video {
+                max-width: 80px;
+                max-height: 80px;
+            }
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
-    <div class="container mt-5 pt-5">
-        <h1 class="mb-4">
-            <i class="fas fa-comments me-2"></i>
-            {% if conversation.type == 'private' and other_user %}
-                Conversation avec {{ other_user.name }} ({{ other_user.role|title }})
-            {% elif conversation.title %}
-                {{ conversation.title }}
-            {% else %}
-                Région {{ conversation.location.name if conversation.location else 'N/A' }}
-            {% endif %}
-        </h1>
-
-        <!-- Conteneur des messages -->
-        <div class="chat-container" id="chat-container">
+    <div class="chat-wrapper">
+        <div class="chat-header">
+            <a href="{{ url_for('messages.index') }}" class="back-btn"><i class="fas fa-arrow-left"></i></a>
+            <h1>
+                {% if conversation.type == 'private' and other_user %}
+                    {{ other_user.name }} ({{ other_user.role|title }})
+                {% elif conversation.title %}
+                    {{ conversation.title }}
+                {% else %}
+                    Région {{ conversation.location.name if conversation.location else 'N/A' }}
+                {% endif %}
+            </h1>
+        </div>
+        <div class="chat-body" id="chat-container">
             {% for message in messages %}
                 <div class="message {% if message.sender.id == current_user.id %}sent{% else %}received{% endif %}">
-                    <strong>
+                    <div class="sender">
                         {% if message.sender.role == 'data_entry' and conversation.type == 'group' %}
                             {% if message.sender.location and message.sender.location.type == 'DIS' %}
                                 District {{ message.sender.location.name }}
@@ -35,57 +255,261 @@
                         {% else %}
                             {{ message.sender.name }}
                         {% endif %}
-                    </strong>
-                    <div>
+                    </div>
+                    <div class="content">
                         {% if message.content %}
                             <p>{{ message.content }}</p>
                         {% endif %}
                         {% if message.attachment_path %}
-                            {% if message.attachment_type == 'image' %}
-                                <img src="{{ url_for('static', filename=message.attachment_path) }}" alt="Pièce jointe">
-                            {% elif message.attachment_type == 'video' %}
-                                <video controls>
-                                    <source src="{{ url_for('static', filename=message.attachment_path) }}" type="video/mp4">
-                                    Votre navigateur ne supporte pas la lecture de vidéos.
-                                </video>
-                            {% else %}
-                                <a href="{{ url_for('static', filename=message.attachment_path) }}" class="file-link" target="_blank">
-                                    Télécharger le fichier
-                                </a>
-                            {% endif %}
+                            <div class="attachment-container">
+                                {% if message.attachment_type == 'image' %}
+                                    <img src="{{ url_for('static', filename=message.attachment_path) }}" alt="Pièce jointe">
+                                    <a href="{{ url_for('static', filename=message.attachment_path) }}" download>
+                                        <button class="download-btn"><i class="fas fa-download"></i></button>
+                                    </a>
+                                {% elif message.attachment_type == 'video' %}
+                                    <video controls>
+                                        <source src="{{ url_for('static', filename=message.attachment_path) }}" type="video/mp4">
+                                        Votre navigateur ne supporte pas la lecture de vidéos.
+                                    </video>
+                                    <a href="{{ url_for('static', filename=message.attachment_path) }}" download>
+                                        <button class="download-btn"><i class="fas fa-download"></i></button>
+                                    </a>
+                                {% else %}
+                                    <a href="{{ url_for('static', filename=message.attachment_path) }}" class="file-link" target="_blank" download>
+                                        Télécharger le fichier
+                                    </a>
+                                {% endif %}
+                            </div>
                         {% endif %}
                     </div>
-                    <span class="timestamp">
-                        {{ message.timestamp|datetimeformat('%d/%m/%Y %H:%M') }}
-                    </span>
+                    <div class="timestamp">
+                        {{ message.timestamp|datetimeformat('%H:%M') }}
+                        {% if message.sender.id == current_user.id %}
+                            <span class="status">
+                                {% if message.read %}✅{% else %}✔️{% endif %}
+                            </span>
+                        {% endif %}
+                    </div>
                 </div>
             {% endfor %}
+            <div class="typing-indicator" id="typing-indicator" style="display: none;">
+                {{ other_user.name if other_user else 'Quelqu\'un' }} est en train d'écrire...
+            </div>
         </div>
-
-        <!-- Formulaire pour envoyer un message -->
-        <form method="POST" action="{{ url_for('messages.send_message') }}" enctype="multipart/form-data" class="mt-4">
-            <input type="hidden" name="conversation_id" value="{{ conversation.id }}">
-            <div class="mb-3">
-                <textarea name="content" class="form-control" rows="3" placeholder="Écrivez votre message ici..."></textarea>
-            </div>
-            <div class="mb-3">
-                <label for="file" class="form-label">Joindre un fichier (image, document, vidéo)</label>
-                <input type="file" name="file" id="file" class="form-control">
-            </div>
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-paper-plane me-2"></i>Envoyer
-            </button>
-        </form>
+        <div class="chat-footer">
+            <form method="POST" action="{{ url_for('messages.send_message') }}" enctype="multipart/form-data" class="message-form" id="message-form">
+                <input type="hidden" name="conversation_id" value="{{ conversation.id }}">
+                <textarea name="content" id="message-input" placeholder="Écrivez votre message..."></textarea>
+                <label for="file-input" class="file-label"><i class="fas fa-paperclip"></i></label>
+                <input type="file" name="file" id="file-input" class="file-input" onchange="previewFile(this)">
+                <span class="emoji-btn" onclick="toggleEmojiPicker()"><i class="fas fa-smile"></i></span>
+                <button type="submit" class="send-btn" onclick="document.getElementById('message-form').submit(); console.log('Send button clicked');"><i class="fas fa-paper-plane"></i></button>
+                <div class="emoji-picker-container" id="emoji-picker"></div>
+                <div id="file-preview-container" style="display: none;"></div>
+            </form>
+        </div>
     </div>
 {% endblock %}
 
 {% block scripts %}
     {{ super() }}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/emoji-mart@latest/dist/browser.js"></script>
     <script>
-        // Faire défiler automatiquement vers le bas du chat
-        document.addEventListener('DOMContentLoaded', function() {
+        const socket = io();
+
+        // Join conversation room
+        socket.emit('join', { conversation_id: '{{ conversation.id }}' });
+
+        // Auto-scroll to latest message
+        document.addEventListener('DOMContentLoaded', () => {
             const chatContainer = document.getElementById('chat-container');
             chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            // Initialize Emoji Mart picker
+            const picker = new EmojiMart.Picker({
+                onEmojiSelect: (emoji) => {
+                    const messageInput = document.getElementById('message-input');
+                    const cursorPosition = messageInput.selectionStart;
+                    const textBefore = messageInput.value.substring(0, cursorPosition);
+                    const textAfter = messageInput.value.substring(cursorPosition);
+                    messageInput.value = textBefore + emoji.native + textAfter;
+                    messageInput.focus();
+                    messageInput.selectionStart = messageInput.selectionEnd = cursorPosition + emoji.native.length;
+
+                    // Trigger input event to handle auto-resize and typing indicator
+                    const inputEvent = new Event('input', { bubbles: true });
+                    messageInput.dispatchEvent(inputEvent);
+
+                    // Hide picker after selection
+                    toggleEmojiPicker();
+                },
+                set: 'native',
+                skinTonePosition: 'search',
+                previewPosition: 'bottom',
+                searchPosition: 'sticky',
+            });
+            document.getElementById('emoji-picker').appendChild(picker);
+
+            // Add form submission logging
+            const form = document.getElementById('message-form');
+            form.addEventListener('submit', (event) => {
+                console.log('Form submitting...');
+                const fileInput = document.getElementById('file-input');
+                if (fileInput.files.length > 0) {
+                    console.log('File to upload:', fileInput.files[0]);
+                } else {
+                    console.log('No file selected');
+                }
+            });
+        });
+
+        // Handle typing indicator
+        const messageInput = document.getElementById('message-input');
+        const typingIndicator = document.getElementById('typing-indicator');
+        let typingTimeout;
+
+        messageInput.addEventListener('input', () => {
+            socket.emit('typing', {
+                conversation_id: '{{ conversation.id }}',
+                user_name: '{{ current_user.name }}'
+            });
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                socket.emit('stop_typing', { conversation_id: '{{ conversation.id }}' });
+            }, 2000);
+        });
+
+        socket.on('typing', (data) => {
+            if (data.user_name !== '{{ current_user.name }}') {
+                typingIndicator.textContent = `${data.user_name} est en train d'écrire...`;
+                typingIndicator.style.display = 'block';
+            }
+        });
+
+        socket.on('stop_typing', () => {
+            typingIndicator.style.display = 'none';
+        });
+
+        // Handle new messages
+        socket.on('new_message', (data) => {
+            const chatContainer = document.getElementById('chat-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${data.sender === '{{ current_user.name }}' ? 'sent' : 'received'}`;
+            messageDiv.innerHTML = `
+                <div class="sender">${data.sender}</div>
+                <div class="content">
+                    ${data.content ? `<p>${data.content}</p>` : ''}
+                    ${data.attachment_path ? `
+                        <div class="attachment-container">
+                            ${data.attachment_type === 'image' ? `<img src="/static/${data.attachment_path}" alt="Pièce jointe">` :
+                            data.attachment_type === 'video' ? `<video controls><source src="/static/${data.attachment_path}" type="video/mp4"></video>` :
+                            `<a href="/static/${data.attachment_path}" class="file-link" target="_blank" download>Télécharger le fichier</a>`}
+                            ${data.attachment_type !== 'file' ? `<a href="/static/${data.attachment_path}" download><button class="download-btn"><i class="fas fa-download"></i></button></a>` : ''}
+                        </div>` : ''}
+                </div>
+                <div class="timestamp">${data.timestamp}</div>
+            `;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            // Clear preview after sending
+            clearFilePreview();
+        });
+
+        // Toggle emoji picker visibility
+        function toggleEmojiPicker() {
+            const pickerContainer = document.getElementById('emoji-picker');
+            pickerContainer.style.display = pickerContainer.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // Auto-resize textarea
+        messageInput.addEventListener('input', () => {
+            messageInput.style.height = '40px';
+            messageInput.style.height = `${Math.min(messageInput.scrollHeight, 100)}px`;
+        });
+
+        // File preview function
+        function previewFile(input) {
+            const previewContainer = document.getElementById('file-preview-container');
+            const file = input.files[0];
+            previewContainer.innerHTML = ''; // Clear previous preview
+
+            if (file) {
+                console.log('File selected:', file);
+                previewContainer.style.display = 'block';
+
+                const previewDiv = document.createElement('div');
+                previewDiv.className = 'file-preview';
+
+                // Check if the file is an image
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    previewDiv.appendChild(img);
+                }
+                // Check if the file is a video
+                else if (file.type.startsWith('video/')) {
+                    const video = document.createElement('video');
+                    video.src = URL.createObjectURL(file);
+                    video.controls = true;
+                    video.style.maxWidth = '100px';
+                    video.style.maxHeight = '100px';
+                    previewDiv.appendChild(video);
+                }
+
+                // Display file info
+                const fileInfo = document.createElement('div');
+                fileInfo.className = 'file-info';
+                const fileName = document.createElement('div');
+                fileName.className = 'file-name';
+                fileName.textContent = file.name;
+                fileInfo.appendChild(fileName);
+
+                // Display file size
+                const fileSize = document.createElement('div');
+                fileSize.className = 'file-size';
+                const sizeInKB = file.size / 1024;
+                const sizeText = sizeInKB > 1024 ? 
+                    `${(sizeInKB / 1024).toFixed(2)} MB` : 
+                    `${sizeInKB.toFixed(2)} KB`;
+                fileSize.textContent = `Taille : ${sizeText}`;
+                fileInfo.appendChild(fileSize);
+
+                previewDiv.appendChild(fileInfo);
+
+                // Add remove button
+                const removeBtn = document.createElement('span');
+                removeBtn.className = 'remove-file';
+                removeBtn.innerHTML = '×';
+                removeBtn.onclick = () => {
+                    input.value = ''; // Clear the file input
+                    clearFilePreview();
+                };
+                previewDiv.appendChild(removeBtn);
+
+                previewContainer.appendChild(previewDiv);
+            } else {
+                clearFilePreview();
+            }
+        }
+
+        // Clear file preview
+        function clearFilePreview() {
+            const previewContainer = document.getElementById('file-preview-container');
+            previewContainer.innerHTML = '';
+            previewContainer.style.display = 'none';
+            document.getElementById('file-input').value = ''; // Clear the file input
+        }
+
+        // Close emoji picker when clicking outside
+        document.addEventListener('click', (event) => {
+            const pickerContainer = document.getElementById('emoji-picker');
+            const emojiBtn = document.querySelector('.emoji-btn');
+            if (!pickerContainer.contains(event.target) && !emojiBtn.contains(event.target)) {
+                pickerContainer.style.display = 'none';
+            }
         });
     </script>
 {% endblock %}

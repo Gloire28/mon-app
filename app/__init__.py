@@ -2,15 +2,17 @@ from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from flask_socketio import SocketIO
 from config import Config
 import os
 from pathlib import Path
-from datetime import datetime  # Ajouté pour le filtre datetimeformat
+from datetime import datetime
 
 # Initialisation des extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
+socketio = SocketIO()
 
 def format_number(value):
     """Formate un nombre avec des séparateurs de milliers."""
@@ -36,8 +38,8 @@ def create_app(config_class=Config):
     BASE_DIR = Path(__file__).resolve().parent.parent
     UPLOAD_FOLDER = BASE_DIR / 'app' / 'static' / 'uploads' / 'messages'
     app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
-    app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'mp4'}
-    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 Mo maximum
+    app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'mp4', 'txt'}
+    app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB maximum
 
     # Créer le dossier uploads/messages s'il n'existe pas
     try:
@@ -60,10 +62,11 @@ def create_app(config_class=Config):
     login_manager.login_message = 'Veuillez vous connecter pour accéder à cette page.'
     login_manager.login_message_category = 'info'
     migrate.init_app(app, db)
+    socketio.init_app(app)
     
     # 3. Configuration des filtres Jinja2
     app.jinja_env.filters['format_number'] = format_number
-    app.jinja_env.filters['datetimeformat'] = datetimeformat  # Ajout du filtre datetimeformat
+    app.jinja_env.filters['datetimeformat'] = datetimeformat
     
     # 4. Gestion des erreurs
     @app.errorhandler(404)
@@ -75,6 +78,11 @@ def create_app(config_class=Config):
     def forbidden(e):
         app.logger.error(f"Erreur 403: {e}")
         return render_template('errors/403.html'), 403
+    
+    @app.errorhandler(413)
+    def request_entity_too_large(e):
+        app.logger.error(f"Erreur 413: Fichier trop volumineux - {e}")
+        return render_template('errors/413.html', message="Fichier trop volumineux. La taille maximale est de 200 MB."), 413
     
     @app.errorhandler(500)
     def internal_server_error(e):
@@ -105,4 +113,19 @@ def create_app(config_class=Config):
             app.logger.warning(f"Utilisateur introuvable: {user_id}")
         return user
     
+    # 7. SocketIO event handlers
+    @socketio.on('typing')
+    def handle_typing(data):
+        conversation_id = data['conversation_id']
+        user_name = data['user_name']
+        socketio.emit('typing', {
+            'user_name': user_name,
+            'conversation_id': conversation_id
+        }, room=conversation_id)
+
+    @socketio.on('stop_typing')
+    def handle_stop_typing(data):
+        conversation_id = data['conversation_id']
+        socketio.emit('stop_typing', {'conversation_id': conversation_id}, room=conversation_id)
+
     return app

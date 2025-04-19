@@ -302,6 +302,7 @@ class Message(db.Model):
     conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'), nullable=False)
     attachment_path = db.Column(db.String(255))
     attachment_type = db.Column(db.String(50))
+    read = db.Column(db.Boolean, default=False)
 
     sender = db.relationship('User', back_populates='messages')
     conversation = db.relationship('Conversation', back_populates='messages')
