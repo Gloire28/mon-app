@@ -1,10 +1,10 @@
 {% extends "shared/base.html" %}
 
 {% block content %}
-<main class="col-12 col-lg-10 px-md-4 mt-4">
+<main class="col-12 px-3 mt-4">
     <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom">
         <h1 class="h3 text-dark">
-            <i class="fas fa-clipboard-list me-2" style="color: #38b2ac;"></i>Nouvelle Saisie
+            <i class="fas fa-edit me-2" style="color: #38b2ac;"></i>Modifier la Saisie
         </h1>
     </div>
 
@@ -20,62 +20,62 @@
         {% endif %}
     {% endwith %}
 
-    <!-- Formulaire de Saisie -->
-    <div class="card shadow-sm mb-4">
+    <!-- Formulaire de Modification -->
+    <div class="card shadow-sm mb-4" style="max-width: 500px; margin: 0 auto;">
         <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #38b2ac, #4a5568);">
-            <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Saisie Hebdomadaire</h5>
+            <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Modifier les Données</h5>
         </div>
         <div class="card-body">
-            <form method="POST" id="data-entry-form">
+            <form method="POST" id="edit-entry-form">
                 {{ form.hidden_tag() }}
                 <div class="row g-3">
                     <!-- Nombre de membres -->
-                    <div class="col-12 col-md-6 col-lg-3">
+                    <div class="col-12">
                         <div class="form-floating position-relative">
-                            {{ form.members(class="form-control shadow-sm", placeholder="Total", id="members") }}
+                            {{ form.members(class="form-control shadow-sm", id="members") }}
                             {{ form.members.label(class="form-label") }}
                             <i class="fas fa-users position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
                             <div id="members-error" class="invalid-feedback"></div>
                         </div>
                     </div>
                     <!-- Nombre d'enfants -->
-                    <div class="col-12 col-md-6 col-lg-3">
+                    <div class="col-12">
                         <div class="form-floating position-relative">
-                            {{ form.children(class="form-control shadow-sm", placeholder="Enfants", id="children") }}
+                            {{ form.children(class="form-control shadow-sm", id="children") }}
                             {{ form.children.label(class="form-label") }}
                             <i class="fas fa-child position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
                             <div id="children-error" class="invalid-feedback"></div>
                         </div>
                     </div>
                     <!-- Nombre d'hommes -->
-                    <div class="col-12 col-md-6 col-lg-3">
+                    <div class="col-12">
                         <div class="form-floating position-relative">
-                            {{ form.men(class="form-control shadow-sm", placeholder="Hommes", id="men") }}
+                            {{ form.men(class="form-control shadow-sm", id="men") }}
                             {{ form.men.label(class="form-label") }}
                             <i class="fas fa-male position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
                             <div id="men-error" class="invalid-feedback"></div>
                         </div>
                     </div>
                     <!-- Nombre de femmes -->
-                    <div class="col-12 col-md-6 col-lg-3">
+                    <div class="col-12">
                         <div class="form-floating position-relative">
-                            {{ form.women(class="form-control shadow-sm", placeholder="Femmes", id="women") }}
+                            {{ form.women(class="form-control shadow-sm", id="women") }}
                             {{ form.women.label(class="form-label") }}
                             <i class="fas fa-female position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
                             <div id="women-error" class="invalid-feedback"></div>
                         </div>
                     </div>
                     <!-- TITE -->
-                    <div class="col-12 col-md-6">
+                    <div class="col-12">
                         <div class="form-floating position-relative">
-                            {{ form.tite(class="form-control shadow-sm", placeholder="Montant TITE", id="tite") }}
+                            {{ form.tite(class="form-control shadow-sm", id="tite") }}
                             {{ form.tite.label(class="form-label") }}
                             <i class="fas fa-money-bill-wave position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
                             <div id="tite-error" class="invalid-feedback"></div>
                         </div>
                     </div>
                     <!-- Localisation -->
-                    <div class="col-12 col-md-6">
+                    <div class="col-12">
                         <div class="form-floating position-relative">
                             {{ form.location(class="form-select shadow-sm", id="location") }}
                             {{ form.location.label(class="form-label") }}
@@ -85,7 +85,7 @@
                     <!-- Commentaire -->
                     <div class="col-12">
                         <div class="form-floating position-relative">
-                            {{ form.commentaire(class="form-control shadow-sm", rows=2, placeholder="Ajoutez un commentaire...", id="commentaire") }}
+                            {{ form.commentaire(class="form-control shadow-sm", rows=2, id="commentaire") }}
                             {{ form.commentaire.label(class="form-label") }}
                             <i class="fas fa-comment position-absolute" style="right: 15px; top: 20%; transform: translateY(-50%); color: #6c757d;"></i>
                         </div>
@@ -93,7 +93,7 @@
                 </div>
                 <div class="mt-4 text-center">
                     <button type="submit" class="btn btn-lg" style="background-color: #38b2ac; color: white;" id="submit-btn">
-                        <i class="fas fa-check-circle me-2"></i>Soumettre
+                        <i class="fas fa-check-circle me-2"></i>Mettre à Jour
                     </button>
                 </div>
             </form>
@@ -106,20 +106,66 @@
 {{ super() }}
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-    .card { border-radius: 10px; overflow: hidden; }
+    .card { border-radius: 12px; overflow: hidden; border: none; }
     .card-header { font-weight: 500; }
-    .form-floating { margin-bottom: 1rem; }
-    .form-control, .form-select { border-radius: 8px; transition: all 0.2s ease; }
-    .form-control:focus, .form-select:focus { border-color: #38b2ac; box-shadow: 0 0 8px rgba(56, 178, 172, 0.3); }
-    .btn { transition: all 0.3s ease; }
-    .btn:hover { background-color: #2c7a7b; transform: translateY(-2px); }
-    .invalid-feedback { display: none; font-size: 0.9rem; }
-    .is-invalid .invalid-feedback { display: block; }
-    .is-valid .form-control { border-color: #28a745; }
-    .is-valid .form-control + i { color: #28a745 !important; }
-    .is-invalid .form-control { border-color: #dc3545; }
-    .is-invalid .form-control + i { color: #dc3545 !important; }
+    .form-floating { margin-bottom: 1.5rem; }
+    .form-control, .form-select { 
+        border-radius: 10px; 
+        padding: 12px 40px 12px 12px; 
+        font-size: 1rem; 
+        transition: all 0.3s ease; 
+        border: 1px solid #ced4da; 
+    }
+    .form-control:focus, .form-select:focus { 
+        border-color: #38b2ac; 
+        box-shadow: 0 0 10px rgba(56, 178, 172, 0.2); 
+        transform: scale(1.01); 
+    }
+    .form-floating > label { 
+        padding: 12px; 
+        font-size: 1rem; 
+        color: #6c757d; 
+    }
+    .form-floating > .form-control:focus ~ label,
+    .form-floating > .form-control:not(:placeholder-shown) ~ label,
+    .form-floating > .form-select:focus ~ label,
+    .form-floating > .form-select:not(:placeholder-shown) ~ label {
+        transform: scale(0.85) translateY(-1.2rem) translateX(0.2rem);
+        color: #38b2ac;
+    }
+    .btn { 
+        border-radius: 10px; 
+        padding: 12px 24px; 
+        transition: all 0.3s ease; 
+    }
+    .btn:hover { 
+        background-color: #2c7a7b; 
+        transform: translateY(-2px); 
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
+    }
+    .invalid-feedback { 
+        display: none; 
+        font-size: 0.9rem; 
+    }
+    .is-invalid .invalid-feedback { 
+        display: block; 
+    }
+    .is-valid .form-control, .is-valid .form-select { 
+        border-color: #28a745; 
+    }
+    .is-valid .form-control + i, .is-valid .form-select + i { 
+        color: #28a745 !important; 
+    }
+    .is-invalid .form-control, .is-invalid .form-select { 
+        border-color: #dc3545; 
+    }
+    .is-invalid .form-control + i, .is-invalid .form-select + i { 
+        color: #dc3545 !important; 
+    }
     @media (max-width: 576px) {
+        .card { max-width: 100%; }
+        .form-control, .form-select { font-size: 0.95rem; }
+        .form-floating > label { font-size: 0.95rem; }
         .btn-lg { width: 100%; }
     }
 </style>
@@ -129,7 +175,7 @@
 {{ super() }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('data-entry-form');
+        const form = document.getElementById('edit-entry-form');
         const membersInput = document.getElementById('members');
         const childrenInput = document.getElementById('children');
         const menInput = document.getElementById('men');
