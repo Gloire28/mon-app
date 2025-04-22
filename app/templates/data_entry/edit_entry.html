@@ -1,18 +1,13 @@
 {% extends "shared/base.html" %}
 
 {% block content %}
-<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 mt-4" style="margin-left: 250px;">
+<main class="col-12 col-lg-10 px-md-4 mt-4">
     <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom">
         <h1 class="h3 text-dark">
-            <i class="fas fa-edit me-2" style="color: #38b2ac;"></i>Modifier l'Entrée
+            <i class="fas fa-clipboard-list me-2" style="color: #38b2ac;"></i>Nouvelle Saisie
         </h1>
-        <a href="{{ url_for('data.dashboard') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="fas fa-arrow-left me-2"></i>Retour au Tableau de Bord
-        </a>
     </div>
 
-
-    
     <!-- Messages Flash -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -25,47 +20,184 @@
         {% endif %}
     {% endwith %}
 
-
-
-    <!-- Formulaire d'édition -->
+    <!-- Formulaire de Saisie -->
     <div class="card shadow-sm mb-4">
-        <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #4a5568, #718096);">
-            <h5 class="mb-0"><i class="fas fa-pen me-2"></i>Modifier les Données</h5>
+        <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #38b2ac, #4a5568);">
+            <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Saisie Hebdomadaire</h5>
         </div>
         <div class="card-body">
-            <form method="POST">
+            <form method="POST" id="data-entry-form">
                 {{ form.hidden_tag() }}
-                <div class="mb-3">
-                    <label for="{{ form.members.id }}" class="form-label">Nombre de Membres</label>
-                    {{ form.members(class="form-control") }}
+                <div class="row g-3">
+                    <!-- Nombre de membres -->
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <div class="form-floating position-relative">
+                            {{ form.members(class="form-control shadow-sm", placeholder="Total", id="members") }}
+                            {{ form.members.label(class="form-label") }}
+                            <i class="fas fa-users position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
+                            <div id="members-error" class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    <!-- Nombre d'enfants -->
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <div class="form-floating position-relative">
+                            {{ form.children(class="form-control shadow-sm", placeholder="Enfants", id="children") }}
+                            {{ form.children.label(class="form-label") }}
+                            <i class="fas fa-child position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
+                            <div id="children-error" class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    <!-- Nombre d'hommes -->
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <div class="form-floating position-relative">
+                            {{ form.men(class="form-control shadow-sm", placeholder="Hommes", id="men") }}
+                            {{ form.men.label(class="form-label") }}
+                            <i class="fas fa-male position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
+                            <div id="men-error" class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    <!-- Nombre de femmes -->
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <div class="form-floating position-relative">
+                            {{ form.women(class="form-control shadow-sm", placeholder="Femmes", id="women") }}
+                            {{ form.women.label(class="form-label") }}
+                            <i class="fas fa-female position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
+                            <div id="women-error" class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    <!-- TITE -->
+                    <div class="col-12 col-md-6">
+                        <div class="form-floating position-relative">
+                            {{ form.tite(class="form-control shadow-sm", placeholder="Montant TITE", id="tite") }}
+                            {{ form.tite.label(class="form-label") }}
+                            <i class="fas fa-money-bill-wave position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
+                            <div id="tite-error" class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    <!-- Localisation -->
+                    <div class="col-12 col-md-6">
+                        <div class="form-floating position-relative">
+                            {{ form.location(class="form-select shadow-sm", id="location") }}
+                            {{ form.location.label(class="form-label") }}
+                            <i class="fas fa-map-marker-alt position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
+                        </div>
+                    </div>
+                    <!-- Commentaire -->
+                    <div class="col-12">
+                        <div class="form-floating position-relative">
+                            {{ form.commentaire(class="form-control shadow-sm", rows=2, placeholder="Ajoutez un commentaire...", id="commentaire") }}
+                            {{ form.commentaire.label(class="form-label") }}
+                            <i class="fas fa-comment position-absolute" style="right: 15px; top: 20%; transform: translateY(-50%); color: #6c757d;"></i>
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label for="{{ form.children.id }}" class="form-label">Enfants</label>
-                    {{ form.children(class="form-control") }}
+                <div class="mt-4 text-center">
+                    <button type="submit" class="btn btn-lg" style="background-color: #38b2ac; color: white;" id="submit-btn">
+                        <i class="fas fa-check-circle me-2"></i>Soumettre
+                    </button>
                 </div>
-                <div class="mb-3">
-                    <label for="{{ form.men.id }}" class="form-label">Hommes</label>
-                    {{ form.men(class="form-control") }}
-                </div>
-                <div class="mb-3">
-                    <label for="{{ form.women.id }}" class="form-label">Femmes</label>
-                    {{ form.women(class="form-control") }}
-                </div>
-                <div class="mb-3">
-                    <label for="{{ form.tite.id }}" class="form-label">TITE</label>
-                    {{ form.tite(class="form-control") }}
-                </div>
-                <div class="mb-3">
-                    <label for="{{ form.commentaire.id }}" class="form-label">Commentaire</label>
-                    {{ form.commentaire(class="form-control") }}
-                </div>
-                <div class="mb-3">
-                    <label for="{{ form.location.id }}" class="form-label">Localisation</label>
-                    {{ form.location(class="form-select") }}
-                </div>
-                <button type="submit" class="btn btn-primary">Mettre à Jour</button>
             </form>
         </div>
     </div>
 </main>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+    .card { border-radius: 10px; overflow: hidden; }
+    .card-header { font-weight: 500; }
+    .form-floating { margin-bottom: 1rem; }
+    .form-control, .form-select { border-radius: 8px; transition: all 0.2s ease; }
+    .form-control:focus, .form-select:focus { border-color: #38b2ac; box-shadow: 0 0 8px rgba(56, 178, 172, 0.3); }
+    .btn { transition: all 0.3s ease; }
+    .btn:hover { background-color: #2c7a7b; transform: translateY(-2px); }
+    .invalid-feedback { display: none; font-size: 0.9rem; }
+    .is-invalid .invalid-feedback { display: block; }
+    .is-valid .form-control { border-color: #28a745; }
+    .is-valid .form-control + i { color: #28a745 !important; }
+    .is-invalid .form-control { border-color: #dc3545; }
+    .is-invalid .form-control + i { color: #dc3545 !important; }
+    @media (max-width: 576px) {
+        .btn-lg { width: 100%; }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('data-entry-form');
+        const membersInput = document.getElementById('members');
+        const childrenInput = document.getElementById('children');
+        const menInput = document.getElementById('men');
+        const womenInput = document.getElementById('women');
+        const titeInput = document.getElementById('tite');
+
+        // Validation en temps réel
+        function validateSum() {
+            const members = parseInt(membersInput.value) || 0;
+            const children = parseInt(childrenInput.value) || 0;
+            const men = parseInt(menInput.value) || 0;
+            const women = parseInt(womenInput.value) || 0;
+            const sum = children + men + women;
+
+            if (membersInput.value === '') {
+                membersInput.classList.remove('is-valid', 'is-invalid');
+                document.getElementById('members-error').textContent = '';
+                return;
+            }
+
+            if (members !== sum) {
+                membersInput.classList.remove('is-valid');
+                membersInput.classList.add('is-invalid');
+                document.getElementById('members-error').textContent = `La somme (${sum}) ne correspond pas au total (${members}).`;
+            } else {
+                membersInput.classList.remove('is-invalid');
+                membersInput.classList.add('is-valid');
+                document.getElementById('members-error').textContent = '';
+            }
+        }
+
+        // Validation des champs numériques
+        function validateNumberInput(input, errorId) {
+            if (input.value === '' || parseInt(input.value) >= 0) {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+                document.getElementById(errorId).textContent = '';
+            } else {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+                document.getElementById(errorId).textContent = 'Veuillez entrer un nombre positif.';
+            }
+        }
+
+        // Écouteurs d'événements pour la validation en temps réel
+        [membersInput, childrenInput, menInput, womenInput].forEach(input => {
+            input.addEventListener('input', () => {
+                validateNumberInput(input, `${input.id}-error`);
+                validateSum();
+            });
+        });
+
+        titeInput.addEventListener('input', () => {
+            validateNumberInput(titeInput, 'tite-error');
+        });
+
+        // Validation finale avant soumission
+        form.addEventListener('submit', function(event) {
+            validateSum();
+            [membersInput, childrenInput, menInput, womenInput, titeInput].forEach(input => {
+                validateNumberInput(input, `${input.id}-error`);
+            });
+
+            if (form.querySelectorAll('.is-invalid').length > 0) {
+                event.preventDefault();
+                alert('Veuillez corriger les erreurs avant de soumettre.');
+            }
+        });
+    });
+</script>
 {% endblock %}
