@@ -3,8 +3,9 @@
 {% block content %}
 <div class="container-fluid">
     <div class="row">
-        <!-- Historique Fixe à Côté de la Sidebar -->
-        <aside class="col-md-3 col-lg-2 bg-white shadow-sm" style="position: fixed; top: 60px; bottom: 0; left: 240px; z-index: 99; overflow-y: auto; border-right: 1px solid #e2e8f0;">
+        <!-- Sidebar (déjà incluse dans base.html) -->
+        <!-- Historique Récent -->
+        <aside class="col-12 col-lg-3 bg-white shadow-sm mb-4 mb-lg-0" style="border-right: 1px solid #e2e8f0;">
             <div class="p-3">
                 <h5 class="text-dark mb-3">
                     <i class="fas fa-history me-2" style="color: #38b2ac;"></i>Historique Récent
@@ -33,7 +34,7 @@
         </aside>
 
         <!-- Contenu Principal -->
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 mt-4" style="margin-left: 480px;">
+        <main class="col-12 col-lg-9 px-md-4">
             <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom">
                 <h1 class="h3 text-dark">
                     <i class="fas fa-tachometer-alt me-2" style="color: #38b2ac;"></i>Tableau de Bord
@@ -68,7 +69,7 @@
                 </div>
                 <div class="card-body">
                     {% if entries %}
-                        <canvas id="membersChart" height="100"></canvas>
+                        <canvas id="membersChart" style="max-height: 400px;"></canvas>
                     {% else %}
                         <p class="text-muted text-center">Aucune donnée disponible pour le graphique.</p>
                     {% endif %}
@@ -77,7 +78,7 @@
 
             <!-- Statut des Demandes -->
             <div class="row">
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                     <div class="card shadow-sm mb-4">
                         <div class="card-header text-dark" style="background-color: #fbd38d;">
                             <h5 class="mb-0"><i class="fas fa-hourglass-half me-2"></i>Statut de la Demande de Changement</h5>
@@ -99,68 +100,68 @@
                                         Région inconnue
                                     {% endif %})
                                 </p>
-                            <div class="d-flex justify-content-around align-items-center">
-                                <!-- Étape 1 : Validation par le Data Entry -->
-                                <div class="text-center">
-                                    <div class="p-3 border rounded" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; background-color: {% if pending_change.status == 'rejected' and pending_change.user_id != current_user.id %}#f8d7da{% elif pending_change.status == 'pending_team_lead' %}#d4edda{% else %}#e2e3e5{% endif %};">
-                                        {% if pending_change.status == 'rejected' and pending_change.user_id != current_user.id %}
-                                            <i class="fas fa-times fa-2x" style="color: #dc3545;"></i>
-                                        {% elif pending_change.status == 'pending_team_lead' %}
-                                             <i class="fas fa-check fa-2x" style="color: #28a745;"></i>
-                                        {% else %}
-                                            <i class="fas fa-hourglass-half fa-2x" style="color: #6c757d;"></i>
-                                        {% endif %}
+                                <div class="d-flex justify-content-around align-items-center flex-wrap">
+                                    <!-- Étape 1 : Validation par le Data Entry -->
+                                    <div class="text-center m-2">
+                                        <div class="p-3 border rounded" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; background-color: {% if pending_change.status == 'rejected' and pending_change.user_id != current_user.id %}#f8d7da{% elif pending_change.status == 'pending_team_lead' %}#d4edda{% else %}#e2e3e5{% endif %};">
+                                            {% if pending_change.status == 'rejected' and pending_change.user_id != current_user.id %}
+                                                <i class="fas fa-times fa-2x" style="color: #dc3545;"></i>
+                                            {% elif pending_change.status == 'pending_team_lead' %}
+                                                <i class="fas fa-check fa-2x" style="color: #28a745;"></i>
+                                            {% else %}
+                                                <i class="fas fa-hourglass-half fa-2x" style="color: #6c757d;"></i>
+                                            {% endif %}
+                                        </div>
+                                        <p class="mt-2 mb-0">Validation Data Entry</p>
                                     </div>
-                                    <p class="mt-2 mb-0">Validation Data Entry</p>
-                                </div>
-                                <!-- Étape 2 : Validation par le Team Lead -->
-                                <div class="text-center">
-                                    <div class="p-3 border rounded" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; background-color: {% if pending_change.status == 'rejected' and pending_change.user_id == current_user.id %}#f8d7da{% elif pending_change.status == 'accepted' %}#d4edda{% else %}#e2e3e5{% endif %};">
-                                        {% if pending_change.status == 'rejected' and pending_change.user_id == current_user.id %}
-                                            <i class="fas fa-times fa-2x" style="color: #dc3545;"></i>
-                                        {% elif pending_change.status == 'accepted' %}
-                                            <i class="fas fa-check fa-2x" style="color: #28a745;"></i>
-                                        {% else %}
-                                            <i class="fas fa-hourglass-half fa-2x" style="color: #6c757d;"></i>
-                                        {% endif %}
+                                    <!-- Étape 2 : Validation par le Team Lead -->
+                                    <div class="text-center m-2">
+                                        <div class="p-3 border rounded" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; background-color: {% if pending_change.status == 'rejected' and pending_change.user_id == current_user.id %}#f8d7da{% elif pending_change.status == 'accepted' %}#d4edda{% else %}#e2e3e5{% endif %};">
+                                            {% if pending_change.status == 'rejected' and pending_change.user_id == current_user.id %}
+                                                <i class="fas fa-times fa-2x" style="color: #dc3545;"></i>
+                                            {% elif pending_change.status == 'accepted' %}
+                                                <i class="fas fa-check fa-2x" style="color: #28a745;"></i>
+                                            {% else %}
+                                                <i class="fas fa-hourglass-half fa-2x" style="color: #6c757d;"></i>
+                                            {% endif %}
+                                        </div>
+                                        <p class="mt-2 mb-0">Validation Team Lead</p>
                                     </div>
-                                    <p class="mt-2 mb-0">Validation Team Lead</p>
                                 </div>
-                            </div>
-                            {% if pending_change.status == 'pending_data_entry' and pending_change.target_district_id == current_user.location_id %}
-                                <form method="POST" action="{{ url_for('data.respond_request', request_id=pending_change.id) }}" class="mt-3">
-                                    <input type="hidden" name="action" value="accept">
-                                    <button type="submit" class="btn btn-success me-2">Accepter</button>
-                                </form>
-                                <form method="POST" action="{{ url_for('data.respond_request', request_id=pending_change.id) }}" class="mt-3">
-                                    <input type="hidden" name="action" value="reject">
-                                    <input type="text" name="reason" placeholder="Raison du refus" class="form-control mb-2" required>
-                                    <button type="submit" class="btn btn-danger">Refuser</button>
-                                </form>
-                            {% elif pending_change.status == 'rejected' %}
-                                <p class="mt-3 text-danger">Raison du refus : {{ pending_change.reason or 'Non spécifiée' }}</p>
+                                {% if pending_change.status == 'pending_data_entry' and pending_change.target_district_id == current_user.location_id %}
+                                    <form method="POST" action="{{ url_for('data.respond_request', request_id=pending_change.id) }}" class="mt-3 d-flex flex-column flex-md-row gap-2">
+                                        <input type="hidden" name="action" value="accept">
+                                        <button type="submit" class="btn btn-success">Accepter</button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('data.respond_request', request_id=pending_change.id) }}" class="mt-3 d-flex flex-column flex-md-row gap-2">
+                                        <input type="hidden" name="action" value="reject">
+                                        <input type="text" name="reason" placeholder="Raison du refus" class="form-control mb-2" required>
+                                        <button type="submit" class="btn btn-danger">Refuser</button>
+                                    </form>
+                                {% elif pending_change.status == 'rejected' %}
+                                    <p class="mt-3 text-danger">Raison du refus : {{ pending_change.reason or 'Non spécifiée' }}</p>
+                                {% endif %}
+                            {% else %}
+                                <p class="text-muted text-center">Aucune demande de changement de localisation en cours.</p>
                             {% endif %}
-                        {% else %}
-                            <p class="text-muted text-center">Aucune demande de changement de localisation en cours.</p>
-                        {% endif %}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {% if pending_promotion %}
-            <div class="col-md-6">
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header text-dark" style="background-color: #b2f5ea;">
-                        <h5 class="mb-0"><i class="fas fa-arrow-up me-2"></i>Demande de Promotion</h5>
-                    </div>
-                    <div class="card-body">
-                        <p class="mb-0">Région : <strong>{{ pending_promotion.requested_region.name }}</strong></p>
-                        <span class="badge bg-success mt-2">En attente</span>
+                {% if pending_promotion %}
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header text-dark" style="background-color: #b2f5ea;">
+                            <h5 class="mb-0"><i class="fas fa-arrow-up me-2"></i>Demande de Promotion</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0">Région : <strong>{{ pending_promotion.requested_region.name }}</strong></p>
+                            <span class="badge bg-success mt-2">En attente</span>
+                        </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
-            {% endif %}
-        </div>
 
             <!-- Affiliation -->
             <div class="card shadow-sm mb-4">
@@ -189,6 +190,17 @@
 {% block styles %}
 {{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+<style>
+    /* Ajustements pour la réactivité */
+    @media (max-width: 991.98px) {
+        aside {
+            margin-left: 0 !important;
+        }
+        main {
+            margin-left: 0 !important;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block scripts %}
@@ -220,7 +232,7 @@
                             label: 'Membres',
                             data: members,
                             borderColor: '#38b2ac',
-                            backgroundColor: membersGradient, // Dégradé aquarelle
+                            backgroundColor: membersGradient,
                             fill: true,
                             tension: 0.4,
                             pointBackgroundColor: '#38b2ac',
@@ -236,7 +248,7 @@
                             label: 'TITE',
                             data: tite,
                             borderColor: '#F56565',
-                            backgroundColor: titeGradient, // Dégradé aquarelle
+                            backgroundColor: titeGradient,
                             fill: true,
                             tension: 0.4,
                             pointBackgroundColor: '#F56565',
@@ -252,6 +264,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         x: {
                             title: {
